@@ -1,0 +1,14 @@
+{
+  "name": "devsosin-harness",
+  "description": "devsosin 의 작업 하네스 — 여러 저장소에서 같이 쓰는 Claude Code 스킬",
+  "owner": {
+    "name": "devsosin"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "공통 작업 스킬(github-issue: 저장소별 설정으로 GitHub 이슈 만들기·갱신·닫기)"
+    }
+  ]
+}

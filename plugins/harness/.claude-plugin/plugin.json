@@ -1,0 +1,9 @@
+{
+  "name": "harness",
+  "version": "0.1.1",
+  "description": "공통 작업 스킬 — 저장소별 설정 파일(.claude/github-issue.yml)로 GitHub 이슈를 같은 형식으로 관리한다",
+  "author": {
+    "name": "devsosin"
+  },
+  "repository": "https://github.com/devsosin/harness"
+}
