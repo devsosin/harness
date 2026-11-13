@@ -8,7 +8,7 @@
     {
       "name": "harness",
       "source": "./plugins/harness",
-      "description": "공통 작업 스킬(github-issue: 이슈 만들기·갱신·닫기, github-pr: 이슈 하나 = PR 하나로 올리기)"
+      "description": "공통 작업 스킬(github-issue: 이슈 만들기·갱신·닫기, implement: 이슈 → 테스트 → 구현 → PR, github-pr: 이슈 하나 = PR 하나로 올리기, pr-reviewer: PR 적대적 리뷰)"
     }
   ]
 }

@@ -12,12 +12,19 @@ harness/
         │   ├── SKILL.md
         │   ├── assets/issue-template.md
         │   └── references/config.md         # 저장소별 설정 형식
-        └── github-pr/                       # /harness:github-pr — 이슈 하나 = PR 하나
-            ├── SKILL.md
-            └── assets/pr-template.md
+        ├── github-pr/                       # /harness:github-pr — 이슈 하나 = PR 하나
+        │   ├── SKILL.md
+        │   └── assets/pr-template.md
+        ├── implement/                       # /harness:implement — 이슈 → 테스트 → 구현 → 검증 → PR
+        │   ├── SKILL.md
+        │   └── references/feature.md, refactor.md
+        └── pr-reviewer/                     # /harness:pr-reviewer — PR 적대적 리뷰(초안)
+            └── SKILL.md
+    docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
+        └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
 ```
 
-공통 문서: `docs/CODE_STYLE.md`(Rust 코드 규칙), `docs/CLEAN_ARCHITECTURE.md`(Rust 프로젝트 구조).
+공통 문서는 플러그인 안 `plugins/harness/docs/<lang>/` 에 둔다. 설치하면 플러그인 폴더만 캐시로 복사되므로 저장소 루트의 파일은 스킬이 읽을 수 없다. 새 언어는 `docs/<lang>/CODE_STYLE.md`(+ `CLEAN_ARCHITECTURE.md`)를 더하고 implement 스킬의 언어 판별 목록에 확장자를 추가한다.
 
 ## 설치
 
