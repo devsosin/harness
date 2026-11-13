@@ -1,87 +1,87 @@
-# Rust 프로젝트 구조
+# Rust Project Structure
 
-여러 Rust 저장소에서 같이 쓰는 모듈·파일 배치 규칙. 코드 작성 규칙은 [CODE_STYLE.md](CODE_STYLE.md).
+Shared module and file layout rules for Rust repositories. For code rules, see [CODE_STYLE.md](CODE_STYLE.md).
 
-> **저장소 문서가 먼저다.** 저장소에 `docs/REPO_ARCHITECTURE.md` 가 있으면 그 저장소의 실제 구조(모듈 목록, 외부 서비스별 폴더, 예외)를 먼저 읽고, 이 문서는 거기에 없는 일반 규칙으로 쓴다. 둘이 다르면 `REPO_ARCHITECTURE.md` 를 따른다.
+> **The repository's own document comes first.** If a repository has `docs/REPO_ARCHITECTURE.md`, read it first for the actual structure (module list, per-service folders, exceptions) and use this guide for anything it does not cover. If they disagree, follow `REPO_ARCHITECTURE.md`.
 
-## 1. 원칙
+## 1. Principles
 
-- **의존은 안쪽으로.** 도메인 타입은 외부 형식(HTTP 응답, DB 행, 화면)을 모른다. 외부 형식 ↔ 도메인 변환은 그 외부를 다루는 모듈(어댑터)의 `types.rs` 에 둔다.
-- **진입점은 얇게.** `main.rs`·HTTP 핸들러·트레이트 구현은 입력을 받아 흐름을 부르고 결과를 돌려주는 일만 한다.
-- **기능(도메인) 단위로 묶는다.** 계층(models/, services/, controllers/)으로 먼저 나누지 않는다.
-- **공유는 실제로 둘 이상이 쓸 때만.** 한 곳만 쓰면 그 곳에 둔다.
-- 파일은 책임이 있을 때만 만든다. 작은 기능은 `mod.rs` 하나여도 된다.
+- **Dependencies point inward.** Domain types do not know external formats (HTTP responses, DB rows, screens). Conversion between an external format and the domain lives in the `types.rs` of the module that talks to that external system (the adapter).
+- **Keep entry points thin.** `main.rs`, HTTP handlers and trait implementations take input, call the workflow and return the result.
+- **Group by feature (domain)**, not by layer (`models/`, `services/`, `controllers/`) first.
+- **Share only what two or more places actually use.** Otherwise keep it where it is used.
+- Create a file only for a clear responsibility. A small feature can be a single `mod.rs`.
 
-## 2. 기능 폴더(공통)
+## 2. Feature folder (all shapes)
 
-| 파일 | 책임 | 넣지 않는 것 |
+| File | Owns | Does not contain |
 |---|---|---|
-| `mod.rs` | 진입점(트레이트 구현·공개 함수)과 흐름: 순서, 재시도, 병렬, 결과 모으기 | wire 타입, 본문 조립 세부 |
-| `types.rs` | 요청·응답 DTO(serde), 외부 ↔ 도메인 변환, 로컬 검증, 그 기능의 enum | 네트워크·DB 호출 |
+| `mod.rs` | Entry points (trait impls, public functions) and the workflow: ordering, retries, concurrency, collecting results | Wire types, request body assembly details |
+| `types.rs` | Request/response DTOs (serde), external ↔ domain conversion, local validation, the feature's enums | Network or DB calls |
 
-## 3. 형태별 구조
+## 3. Layout by project shape
 
-### API 연동 라이브러리(lib)
-
-```text
-src/
-  lib.rs       모듈 선언, 결과 별칭
-  config.rs    팩토리(설정 → 구현체), 예: get_api()
-  errors.rs    공통 오류, 오류별 대응(멈춤·재로그인·재시도)
-  traits.rs    호출하는 쪽이 쓰는 트레이트(포트)
-  types/       통합 도메인(공급자 무관)
-  utils/       두 공급자 이상이 쓰는 것: http, retry, time, ...
-  <provider>/  공급자(외부 서비스)마다
-    mod.rs     클라이언트 구조체·from_env, 하위 모듈, 호스트 상수
-    client.rs  요청 헬퍼(get/post/put): 인증 주입, 변경 요청 처리, 응답 봉투 읽기
-    types.rs   응답 봉투 enum + into_data, 공급자 오류 코드 분류
-    <feature>/ mod.rs(트레이트 구현·흐름) + types.rs
-```
-
-호출하는 쪽은 팩토리와 트레이트만 쓴다. 공급자 구체 타입은 꼭 필요한 것만 공개한다.
-
-### 실행 프로그램(bin — 수집기·워커·CLI)
+### API client library (lib)
 
 ```text
 src/
-  main.rs      설정 읽기, 런타임·로깅 시작, 종료 신호, lib 의 실행 함수 호출(로직 없음)
-  lib.rs       모듈 선언 — 로직은 lib 쪽에 두어 테스트한다
-  config/      설정 타입·검증(mod.rs + types.rs)
-  <job>/       하는 일마다(예: collector/): 주기·단계 흐름(mod.rs), 변환 규칙(mapping.rs 등)
-  <adapter>/   외부 서비스 클라이언트(예: backend/): 라이브러리 형태와 같은 구성
-  heartbeat.rs, halt.rs 처럼 프로그램 수준의 한 가지 일은 이름 있는 파일 하나
+  lib.rs       module declarations, result alias
+  config.rs    factory (config → implementation), e.g. get_api()
+  errors.rs    shared errors and the reaction per error (stop / re-login / retry)
+  traits.rs    traits the caller uses (ports)
+  types/       unified domain (provider-agnostic)
+  utils/       used by two or more providers: http, retry, time, ...
+  <provider>/  one per external service
+    mod.rs     client struct, from_env, submodules, host constants
+    client.rs  request helpers (get/post/put): auth injection, mutations, envelope parsing
+    types.rs   response envelope enum + into_data, provider error-code classification
+    <feature>/ mod.rs (trait impl, workflow) + types.rs
 ```
 
-### 웹 서비스(HTTP API 서버)
+Callers use only the factory and traits; expose concrete provider types only when needed.
+
+### Executable (bin — collectors, workers, CLIs)
 
 ```text
 src/
-  main.rs      설정·DB 풀·라우터 조립, 서버 시작
-  routes/      HTTP 경계: 경로마다 파일. 요청 파싱·검증 → 도메인 호출 → 응답 변환(SQL·업무 규칙 없음)
-  <domain>/    업무 단위(예: orders/): mod.rs(유스케이스), types.rs, repo.rs(쿼리), 규칙 이름 파일
-  db/          풀·마이그레이션·트랜잭션 헬퍼
-  errors.rs    도메인 오류 → HTTP 응답(상태 코드·본문) 변환은 한 곳
-  auth/        인증·미들웨어
+  main.rs      read config, start runtime/logging, handle shutdown, call the lib entry (no logic)
+  lib.rs       module declarations — keep logic in the lib so it can be tested
+  config/      config types and validation (mod.rs + types.rs)
+  <job>/       one per job (e.g. collector/): cycle/step workflow (mod.rs), mapping rules (mapping.rs, ...)
+  <adapter>/   clients for external services (e.g. backend/), shaped like the library layout
+  heartbeat.rs, halt.rs — one named file per program-level concern
 ```
 
-## 4. 나누는 규칙
+### Web service (HTTP API server)
 
-1. **기능 폴더 안에서 먼저.** 파일 하나가 비테스트 약 250줄을 넘거나 책임이 둘 이상 섞이면 책임 이름 파일로 나눈다.
-   - `types.rs` 가 크면: `request.rs`, `response.rs`, 규칙 이름(`pricing.rs`, `grouping.rs`)
-   - `mod.rs` 흐름이 크면: 단계 이름(`detail.rs`, `batch.rs`, `session.rs`). `mod.rs` 에는 진입점과 단계 순서만.
-2. **같은 상위 모듈의 기능 둘 이상이 쓰면 그 상위 루트로**(예: 공급자 루트의 `client.rs`, `session.rs`).
-3. **상위 모듈 둘 이상이 쓰면 크레이트 공유 모듈(`utils/` 아래 역할 이름)로.**
-4. **파일이 여러 개가 되면 폴더로**(`x.rs` → `x/mod.rs` + 하위). 하위 항목은 `pub(super)` 기본.
-5. 이름은 역할로. `utils.rs`·`helpers.rs`·`common.rs`·`misc.rs` 는 쓰지 않는다(크레이트 루트 `utils/` 폴더만 예외).
-6. 나눌 때 테스트도 같이 옮긴다.
-7. 250줄을 넘는데 나누지 않으면 이유를 PR 에 적는다.
+```text
+src/
+  main.rs      config, DB pool, router assembly, start server
+  routes/      HTTP boundary, one file per path group: parse/validate → call domain → map response (no SQL, no business rules)
+  <domain>/    business unit (e.g. orders/): mod.rs (use cases), types.rs, repo.rs (queries), rule-named files
+  db/          pool, migrations, transaction helpers
+  errors.rs    domain error → HTTP response (status, body) in one place
+  auth/        authentication, middleware
+```
 
-## 5. 긴 자동화 흐름(브라우저·다단계 인증 등)
+## 4. Split rules
 
-- 공통 도구(예: `utils/selenium/`)는 책임마다 파일: 세션 생명주기(`mod.rs`), 옵션, 대기, 쿠키, 오류 분류.
-- 서비스별 흐름은 한 파일 = 한 화면 또는 한 단계(`login.rs`, `email.rs`, `wait.rs`, `page.rs`). `mod.rs` 는 생명주기와 단계 순서만. 화면이 바뀌기 쉬운 셀렉터는 화면 파일이나 `selectors.rs` 에 모은다.
-- 화면 하나가 다시 커지면 그 화면만 폴더로.
+1. **Split inside the feature folder first.** When a file passes ~250 non-test lines or mixes two or more responsibilities, split it into responsibility-named files.
+   - Large `types.rs`: `request.rs`, `response.rs`, rule names (`pricing.rs`, `grouping.rs`)
+   - Large `mod.rs` workflow: step names (`detail.rs`, `batch.rs`, `session.rs`); `mod.rs` keeps entry points and step order only.
+2. **Used by two or more features of the same parent → move to that parent's root** (e.g. a provider's `client.rs`, `session.rs`).
+3. **Used by two or more parents → move to a crate-level shared module** (under `utils/`, named by role).
+4. **Several files → make a folder** (`x.rs` → `x/mod.rs` + children). Children default to `pub(super)`.
+5. Name modules by role. No `utils.rs`, `helpers.rs`, `common.rs`, `misc.rs` (the crate-level `utils/` folder is the only exception).
+6. Move tests together with the code they cover.
+7. If a file stays above ~250 lines unsplit, say why in the PR.
 
-## 6. 확인
+## 5. Long automation flows (browsers, multi-step auth)
 
-구조만 바꾸는 PR 은 동작을 바꾸지 않는다. 바꾸기 전과 같은 테스트가 같은 수로 통과해야 하고, 지원하는 feature 조합을 모두 빌드한다.
+- Shared tooling (e.g. `utils/selenium/`): one file per responsibility — session lifecycle (`mod.rs`), options, waits, cookies, error classification.
+- Service-specific flows: one file per screen or step (`login.rs`, `email.rs`, `wait.rs`, `page.rs`); `mod.rs` holds only the lifecycle and step order. Keep fragile selectors in the screen file or a `selectors.rs`.
+- If one screen grows again, turn only that screen into a folder.
+
+## 6. Verification
+
+A structure-only PR does not change behavior: the same tests pass in the same number, and every supported feature combination builds.
