@@ -40,14 +40,24 @@ labels:
     color: bfbfbf
     description: 사용자 결정으로 보류
 
-# 완료 조건에 쓸 검증 명령(선택).
+# 완료 조건에 쓸 검증 명령(선택). implement·github-pr 스킬이 PR 전에 모두 돌린다.
 verify:
+  - cargo fmt --check
+  - cargo clippy --all-targets -- -D warnings
   - cargo test
 
 # 파일 안 코드 순서 확인(code-order 스킬, 선택). 언어 → 확인할 경로.
 # implement·github-pr·pr-reviewer 가 verify 와 함께 호스트 Node 로 돌린다(설치된 플러그인의 스크립트).
 # code_order:
 #   rust: [src, examples, tests]
+
+# verify 를 돌리는 데 필요한 환경(선택). implement 스킬이 구현 전에 check 를 돌려 보고,
+# 실패하면 setup 을 제시하며 사용자에게 먼저 묻는다(부분 검증으로 진행할지 등).
+# test_env:
+#   needs: [PostgreSQL 16 (개발 compose 의 db), sqlx-cli 0.9]
+#   setup: docker compose -f docker-compose.dev.yml up -d db
+#   check: docker compose -f docker-compose.dev.yml exec -T db pg_isready
+#   env: DATABASE_URL 은 .env 에서(값은 출력·커밋하지 않는다)
 
 # 예전 이슈 파일을 ID → GitHub 번호 목록으로 남겼으면 그 경로(선택). 새 이슈도 한 줄 더한다.
 # index_file: docs/OPEN_ISSUES.md
