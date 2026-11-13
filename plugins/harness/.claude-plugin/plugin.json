@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "공통 작업 스킬 — GitHub 이슈(github-issue), 이슈 구현(implement), 이슈 기반 PR(github-pr), PR 적대적 리뷰(pr-reviewer), 파일 안 코드 순서(code-order)를 저장소별 설정과 언어별 가이드로 같은 형식으로 진행한다",
   "author": {
     "name": "devsosin"
