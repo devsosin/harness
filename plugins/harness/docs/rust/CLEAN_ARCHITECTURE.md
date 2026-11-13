@@ -86,12 +86,12 @@ Three layers per domain, called in one direction only: **handler → usecase →
 
 | Layer | Owns | Does not contain |
 |---|---|---|
-| `handler` | Extractors, input validation, caller/permission checks, calling one use case, mapping the result and errors to the response, audit-log wrapping | SQL, transactions, business rules |
-| `usecase` | One operation the domain offers: opening and committing the transaction, lock order, business rules, combining repository calls, building the domain result | HTTP types (`StatusCode`, extractors), SQL strings |
-| `repository` | SQL only: one function per query, taking a connection/transaction (`&mut PgConnection`) and returning rows or domain types | `begin`/`commit`, business decisions, HTTP |
+| `handler` | Extracting the request, validating request objects (and the caller/permission), calling one use case, validating what goes out (response object contract, status), wrapping it in the HTTP response and mapping errors, audit-log wrapping | Business logic, building the response object from domain data, SQL, transactions |
+| `usecase` | Business logic for one operation: transaction (begin/commit), lock order, rules, combining repository calls, **converting entities/records into the response object** (dto) | HTTP types (`StatusCode`, extractors, headers), SQL strings |
+| `repository` | DB communication only: one function per query, taking a connection/transaction (`&mut PgConnection`) and returning `entity`/`record` types | `begin`/`commit`, business decisions, dto conversion, HTTP |
 
 - Reads go through a use case too, even when it only calls one repository function — one rule, and a natural place for the next rule.
-- `entity`/`record` types never reach the API: convert them to `dto` (or `types`) in the use case or with `From`.
+- `entity`/`record` types never reach the API: the use case converts them into the response dto (a `From` impl in `dto/` is fine — the use case calls it).
 - The name is `usecase`, not `service`: in Axum `Service` is the tower trait, and "service" is often already a domain word (service accounts, sending services).
 
 #### Splitting a layer into a folder
