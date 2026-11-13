@@ -46,6 +46,11 @@ verify:
   - cargo clippy --all-targets -- -D warnings
   - cargo test
 
+# 파일 안 코드 순서 확인(code-order 스킬, 선택). 언어 → 확인할 경로.
+# implement·github-pr·pr-reviewer 가 verify 와 함께 호스트 Node 로 돌린다(설치된 플러그인의 스크립트).
+# code_order:
+#   rust: [src, examples, tests]
+
 # verify 를 돌리는 데 필요한 환경(선택). implement 스킬이 구현 전에 check 를 돌려 보고,
 # 실패하면 setup 을 제시하며 사용자에게 먼저 묻는다(부분 검증으로 진행할지 등).
 # test_env:

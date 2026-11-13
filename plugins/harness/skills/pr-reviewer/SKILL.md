@@ -41,7 +41,7 @@ gh issue view <이슈> -R <repo> --json title,body,comments   # Closes/Refs 로 
 
 - 코드를 끝까지 따라가 실패 경로를 보인다(파일:줄).
 - 실패하는 테스트를 직접 써서 돌려 본다(리뷰용 — PR 브랜치에 커밋하지 않는다).
-- `verify` 명령을 돌려 결과를 PR 본문의 검증 결과와 대조한다(테스트 수 포함).
+- `verify` 명령을 돌려 결과를 PR 본문의 검증 결과와 대조한다(테스트 수 포함). `code_order` 가 있으면 `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <경로...>` 도 돌린다(1 이면 지적).
 - `grep` 결과로 남은 참조를 보인다.
 
 ## 4. 결과 정리

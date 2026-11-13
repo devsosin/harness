@@ -43,7 +43,20 @@ Shared code rules for Rust repositories (API client libraries, executables, web 
 - Use dynamic JSON (`serde_json::Value`) only for genuinely variable data or deliberately raw access, and convert to types before making decisions. When a fetched document must be sent back unchanged, type only the fields you use and keep the rest in `#[serde(flatten)] rest: Map`.
 - Never log passwords, tokens, cookies, one-time codes or personal data. Log the stage and the context needed for diagnosis.
 
-## 7. Docs, tests, verification
+## 7. Item order
+
+Top-level items in a file follow this order (checked and applied by the `code-order` skill, `scripts/rust.mjs`):
+
+1. Inner docs and attributes (`//!`, `#![...]`), `extern crate`
+2. `mod` declarations
+3. `use`, in blank-line-separated groups: `std`/`core`/`alloc` → external crates → `crate`/`super`/`self`/this file's modules → `pub use` re-exports
+4. `macro_rules!`, then `const`/`static`, then `type` aliases (shared types normally live in `types.rs`)
+5. One block per type, in the order the types are defined: definition (`struct`/`enum`/`trait`) → inherent `impl` → trait `impl`s → free functions those items call (transitively, in first-use order). An `impl` of a type defined elsewhere forms its own block; a local trait's impl for an outside type follows the trait.
+6. Free functions no block uses, then non-test inline modules, then `#[cfg(test)] mod tests` last
+
+Most files hold one main type, so this reads as: imports → constants → the type → its impls → its helpers → tests.
+
+## 8. Docs, tests, verification
 
 - Format with `rustfmt`. Separate declarations and implementations with blank lines.
 - Doc comments (`///`) for public contracts, failure conditions and side effects; plain comments for decisions and constraints the code cannot express.

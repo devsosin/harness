@@ -18,8 +18,11 @@ harness/
         ├── implement/                       # /harness:implement — 이슈 → 테스트 → 구현 → 검증 → PR
         │   ├── SKILL.md
         │   └── references/feature.md, refactor.md
-        └── pr-reviewer/                     # /harness:pr-reviewer — PR 적대적 리뷰(초안)
-            └── SKILL.md
+        ├── pr-reviewer/                     # /harness:pr-reviewer — PR 적대적 리뷰(초안)
+        │   └── SKILL.md
+        └── code-order/                      # /harness:code-order — 파일 안 코드 순서 확인·정렬
+            ├── SKILL.md
+            └── scripts/rust.mjs, rust.test.mjs   # Node 18+, 의존성 없음
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
 ```
