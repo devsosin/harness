@@ -10,7 +10,7 @@ PR 하나 = 이슈 하나. 일의 중심은 구현과 diff 확인이고, PR 본�
 ## 1. 올리기 전
 - 이슈 ID·번호를 확인한다(제목 `[ID] 요약`). 다른 저장소 이슈면 `owner/repo#N`.
 - 기본 브랜치에서 `<type>/<짧은-이름>` 브랜치를 만든다. 기본 브랜치에 직접 커밋하지 않는다.
-- 저장소 `.claude/github-issue.yml` 의 `verify`(없으면 저장소 문서의 검증 명령)를 돌려 통과시킨다.
+- 저장소 `.claude/github-issue.yml` 의 `verify`(없으면 저장소 문서의 검증 명령)를 돌려 통과시킨다. `code_order` 가 있으면 언어마다 `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <경로...>` 도 돌린다(종료 코드 0 이어야 함. 1 이면 code-order 스킬로 정렬해 `style:` 커밋 하나로 따로 둔다).
 - **diff 를 직접 읽는다**: `git status`, `git diff --stat`, 전체 `git diff`. 의도하지 않은 변경(비밀값·`.env`·임시 파일·포맷만 바뀐 파일·다른 작업)이 없는지 본다.
 - 저장소가 커밋 전 검토를 요구하면(CLAUDE.md 등) 변경을 보여 주고 승인 뒤 커밋한다.
 

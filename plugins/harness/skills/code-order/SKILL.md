@@ -8,6 +8,7 @@ description: 파일 안 코드(최상위 항목) 순서를 언어별 규칙대�
 규칙은 언어 가이드 `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md` 의 "Item order" 절. 스크립트는 항목을 통째로 옮기기만 하고 내용은 바꾸지 않는다(같은 글자만 있는지 스스로 검사). 지금은 Rust 만 있다: `scripts/rust.mjs`(Node 18+, 의존성 없음).
 
 ## 1. 확인
+저장소 `.claude/github-issue.yml` 의 `code_order`(언어 → 경로)가 있으면 그 경로를 쓴다. implement·github-pr·pr-reviewer 도 같은 설정으로 이 확인을 돌린다.
 ```bash
 node ${CLAUDE_SKILL_DIR}/scripts/rust.mjs src examples tests
 ```

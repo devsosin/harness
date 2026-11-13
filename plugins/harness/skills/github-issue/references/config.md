@@ -44,6 +44,11 @@ labels:
 verify:
   - cargo test
 
+# 파일 안 코드 순서 확인(code-order 스킬, 선택). 언어 → 확인할 경로.
+# implement·github-pr·pr-reviewer 가 verify 와 함께 호스트 Node 로 돌린다(설치된 플러그인의 스크립트).
+# code_order:
+#   rust: [src, examples, tests]
+
 # 예전 이슈 파일을 ID → GitHub 번호 목록으로 남겼으면 그 경로(선택). 새 이슈도 한 줄 더한다.
 # index_file: docs/OPEN_ISSUES.md
 

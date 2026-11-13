@@ -52,7 +52,7 @@ description: GitHub 이슈 하나를 받아 구현하는 공통 절차 — 이�
 
 ## 5. 검증
 
-1. `verify` 명령 전부(없으면 언어 가이드의 기본 검사 — Rust: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`).
+1. `verify` 명령 전부(없으면 언어 가이드의 기본 검사 — Rust: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). `code_order` 가 있으면 언어마다 `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <경로...>` 도 돌린다(종료 코드 0 이어야 함. 1 이면 code-order 스킬로 정렬해 `style:` 커밋 하나로 따로 둔다).
 2. 1단계 기준선과 비교 — 새로 실패한 테스트 0, 테스트 수 변화가 의도와 맞는지(종류별 기준은 상세 문서).
 3. 완료 조건을 하나씩 대조해 "통과 근거(테스트 이름·명령 출력)" 또는 "확인 못 함(이유)"을 적는다.
 4. `git diff <기본 브랜치>...HEAD` 를 처음부터 끝까지 읽는다 — 의도하지 않은 변경, 남은 디버그 코드, 지운 코드를 아직 참조하는 곳(`grep`), 비밀값.
