@@ -8,7 +8,7 @@ Shared module and file layout rules for Rust repositories. For code rules, see [
 
 - **Dependencies point inward.** Domain types do not know external formats (HTTP responses, DB rows, screens). Conversion between an external format and the domain lives in the `types.rs` of the module that talks to that external system (the adapter).
 - **Keep entry points thin.** `main.rs`, HTTP handlers and trait implementations take input, call the workflow and return the result.
-- **Group by feature (domain)**, not by layer (`models/`, `services/`, `controllers/`) first.
+- **Group by feature (domain)**, not by layer (`models/`, `services/`, `controllers/`) first. Layers live *inside* a feature (web service: handler → usecase → repository, §3).
 - **Share only what two or more places actually use.** Otherwise keep it where it is used.
 - Create a file only for a clear responsibility. A small feature can be a single `mod.rs`.
 
@@ -18,6 +18,8 @@ Shared module and file layout rules for Rust repositories. For code rules, see [
 |---|---|---|
 | `mod.rs` | Entry points (trait impls, public functions) and the workflow: ordering, retries, concurrency, collecting results | Wire types, request body assembly details |
 | `types.rs` | Request/response DTOs (serde), external ↔ domain conversion, local validation, the feature's enums | Network or DB calls |
+
+Web service domains add layers on top of this (`handler`, `usecase`, `repository`, optional `dto/`, `constants.rs`) — see §3 "Domain feature layout".
 
 ## 3. Layout by project shape
 
@@ -56,18 +58,77 @@ src/
 
 ```text
 src/
-  main.rs      config, DB pool, router assembly, start server
-  routes/      HTTP boundary, one file per path group: parse/validate → call domain → map response (no SQL, no business rules)
-  <domain>/    business unit (e.g. orders/): mod.rs (use cases), types.rs, repo.rs (queries), rule-named files
-  db/          pool, migrations, transaction helpers
+  main.rs      config, DB pool, start server (no logic)
+  app.rs       Router assembly: middleware order, then `.merge(<domain>::router())` per domain
+  <domain>/    business unit (e.g. orders/, inventory/) — layered inside, see below
+  http/        shared extractors (validated JSON/query/path), response shapes, middleware
+  auth/        authentication, caller extractors, permission scopes
   errors.rs    domain error → HTTP response (status, body) in one place
-  auth/        authentication, middleware
+  db/          pool, transaction helpers (migrations live at the repository root)
 ```
+
+There is no crate-wide `routes/` folder: each domain owns its HTTP boundary.
+
+#### Domain feature layout
+
+Three layers per domain, called in one direction only: **handler → usecase → repository**.
+
+```text
+<domain>/
+  mod.rs          submodule declarations and `pub fn router() -> Router<AppState>` (path table only)
+  handler.rs      HTTP boundary
+  usecase.rs      use cases
+  repository.rs   SQL
+  types.rs        domain types and enums shared by the layers
+  constants.rs    fixed values (limits, page sizes, reserved ids) — optional
+  dto/            API request/response shapes, when they no longer fit in types.rs — optional
+```
+
+| Layer | Owns | Does not contain |
+|---|---|---|
+| `handler` | Extractors, input validation, caller/permission checks, calling one use case, mapping the result and errors to the response, audit-log wrapping | SQL, transactions, business rules |
+| `usecase` | One operation the domain offers: opening and committing the transaction, lock order, business rules, combining repository calls, building the domain result | HTTP types (`StatusCode`, extractors), SQL strings |
+| `repository` | SQL only: one function per query, taking a connection/transaction (`&mut PgConnection`) and returning rows or domain types | `begin`/`commit`, business decisions, HTTP |
+
+- Reads go through a use case too, even when it only calls one repository function — one rule, and a natural place for the next rule.
+- `entity`/`record` types never reach the API: convert them to `dto` (or `types`) in the use case or with `From`.
+- The name is `usecase`, not `service`: in Axum `Service` is the tower trait, and "service" is often already a domain word (service accounts, sending services).
+
+#### Splitting a layer into a folder
+
+Turn a layer file into a folder of the same name when it passes ~250 non-test lines or mixes responsibilities (§4). Keep the folder names below so every domain reads the same.
+
+```text
+<domain>/
+  handler/
+    mod.rs        re-exports only
+    get.rs        list / detail / export (GET)
+    create.rs     POST that creates
+    update.rs     PUT / PATCH
+    delete.rs     DELETE or POST …/delete
+                  (or action names for non-CRUD endpoints: cancel.rs, resend.rs, charge.rs)
+  usecase/
+    mod.rs        re-exports only
+    <action>.rs   one file per use case or tight group (create.rs, cancel.rs, charge.rs)
+  repository/
+    mod.rs        re-exports only
+    entity.rs     table row types — one struct per table, columns as stored (names, nullability)
+    record.rs     SELECT result types — joined, aggregated or partial rows (`query_as!` targets)
+    <group>.rs    queries grouped by what they read/write (orders.rs, search.rs, stock.rs)
+    sql/          very long statements as .sql files (`sqlx::query_file!`), named like the function
+  dto/
+    request.rs    request bodies and query parameters (serde, validation attributes)
+    response.rs   response bodies (serde names as in the API spec)
+```
+
+- `entity` vs `record`: an `entity` mirrors a table and is used for inserts/updates and whole-row reads; a `record` is whatever a particular SELECT returns. Do not widen an entity to fit a join — add a record.
+- Split a long query out of a group file into its own file (or `sql/`) before splitting the group by tables.
+- Types used by two or more layers stay in `types.rs` (domain enums, ids, value objects); request/response shapes go to `dto/`; plain fixed values go to `constants.rs`.
 
 ## 4. Split rules
 
 1. **Split inside the feature folder first.** When a file passes ~250 non-test lines or mixes two or more responsibilities, split it into responsibility-named files.
-   - Large `types.rs`: `request.rs`, `response.rs`, rule names (`pricing.rs`, `grouping.rs`)
+   - Large `types.rs`: `request.rs`, `response.rs`, rule names (`pricing.rs`, `grouping.rs`); in a web service domain, request/response shapes go to `dto/` and fixed values to `constants.rs` (§3)
    - Large `mod.rs` workflow: step names (`detail.rs`, `batch.rs`, `session.rs`); `mod.rs` keeps entry points and step order only.
 2. **Used by two or more features of the same parent → move to that parent's root** (e.g. a provider's `client.rs`, `session.rs`).
 3. **Used by two or more parents → move to a crate-level shared module** (under `utils/`, named by role).
