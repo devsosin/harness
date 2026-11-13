@@ -1,52 +1,52 @@
-# Rust 코드 스타일
+# Rust Code Style
 
-여러 Rust 저장소(API 연동 라이브러리, 실행 프로그램, 웹 서비스)에서 같이 쓰는 코드 작성 규칙. 모듈·파일 배치는 [CLEAN_ARCHITECTURE.md](CLEAN_ARCHITECTURE.md). 저장소 문서가 이 문서와 다르면 저장소 문서를 따른다.
+Shared code rules for Rust repositories (API client libraries, executables, web services). For module and file layout, see [CLEAN_ARCHITECTURE.md](CLEAN_ARCHITECTURE.md). When a repository's own docs differ from this guide, follow the repository.
 
-## 1. 생성
+## 1. Construction
 
-- 앱 코드에서 구조체 리터럴 대신 `Type::new(..)` 로 만든다. 필드는 기본 비공개, 초기화 규칙은 타입의 `impl` 에 둔다.
-- 검증이 필요하면 `new` 가 `Result<Self, Error>` 를 돌려준다. 패닉하지 않는다.
-- 인자가 많고 서로 관계없으면 파라미터 타입이나 빌더를 만든다.
-- 진입점 이름: `new`(명시적 입력), `Default`(완전하고 의미 있는 기본값), `from_env`(환경 설정, 실패 가능 → `Result`), `From`/`TryFrom`(변환). 외부 응답은 역직렬화로 만들고, 쓰지 않는 생성자는 만들지 않는다.
+- Build application types with `Type::new(..)` rather than struct literals at call sites. Keep fields private by default; put initialization rules in the type's `impl`.
+- If construction needs validation, `new` returns `Result<Self, Error>`. Do not panic.
+- For many unrelated arguments, introduce a parameter type or a builder.
+- Entry points: `new` (explicit inputs), `Default` (a complete, meaningful default), `from_env` (environment config, fallible → `Result`), `From`/`TryFrom` (conversions). External responses are built by deserialization; do not add unused constructors.
 
-## 2. 정해진 값은 enum
+## 2. Fixed values are enums
 
-- 상태·모드·종류·정책은 문자열이나 bool 여러 개 대신 enum. 함수 인자도 enum 으로 받는다.
-- 외부 표기는 `#[serde(rename/rename_all)]` 로 맞춘다.
-- 모르는 외부 값: 계약 위반이면 거절, 무시해도 되면 `#[serde(other)] Unknown`, 원래 값이 필요하면 `Other(String)`. **모르는 값을 성공·처리 가능으로 보지 않는다.**
-- enum 은 그 개념을 가진 가장 좁은 모듈의 `types.rs` 에 둔다. 여러 기능이 쓰면 공유 도메인으로 올린다.
+- Model statuses, modes, kinds and policies as enums, not strings or several bools. Accept the enum in function parameters too.
+- Match external spelling with `#[serde(rename/rename_all)]`.
+- Unknown external values: reject if accepting breaks a contract; `#[serde(other)] Unknown` if they can be ignored; `Other(String)` if the original is needed. **Never treat an unknown value as success or as eligible for a state change.**
+- Put an enum in the `types.rs` of the narrowest module that owns the concept; promote it to a shared domain module only when several features use it.
 
-## 3. 소유권·공개 범위
+## 3. Ownership and visibility
 
-- 읽기만 하면 `&str`, `&[T]`, 저장·소비하면 `String`, `Vec<T>`. clone 은 이유가 있을 때만.
-- 공개 범위는 좁게: 비공개 → `pub(super)` → `pub(crate)` → `pub`. 필드마다 getter·setter 를 기계적으로 만들지 않는다.
-- `Arc`·`Mutex` 는 실제로 공유할 때만.
+- Borrow (`&str`, `&[T]`) when only reading; take owned values (`String`, `Vec<T>`) when storing or consuming. Clone only with a reason.
+- Use the narrowest visibility: private → `pub(super)` → `pub(crate)` → `pub`. Do not generate a getter and setter for every field.
+- Use `Arc`/`Mutex` only for genuinely shared state.
 
-## 4. 이름
+## 4. Naming
 
-- 타입·variant `UpperCamelCase`, 함수·필드 `snake_case`, 상수 `SCREAMING_SNAKE_CASE`.
-- 역할이 드러나게: `CreateOrderRequest`, `OrderPage`, `OrderStatus`, `RetryPolicy`. 모듈 안에서 겹치는 접두어는 뺀다.
-- 변환: `as_*`(빌림), `to_*`(복사 변환), `into_*`(소비 변환).
-- private 함수에 `_` 접두어를 붙이지 않는다. 하는 일을 이름으로.
+- Types and variants `UpperCamelCase`, functions and fields `snake_case`, constants `SCREAMING_SNAKE_CASE`.
+- Name by role: `CreateOrderRequest`, `OrderPage`, `OrderStatus`, `RetryPolicy`. Drop prefixes that repeat the module name.
+- Conversions: `as_*` (borrowed view), `to_*` (non-consuming conversion), `into_*` (consuming).
+- No `_` prefix on private functions; name them after what they do.
 
-## 5. 오류
+## 5. Errors
 
-- 복구 가능한 실패는 `Result`. 같은 경계에서 일관되게 쓰면 결과 별칭(`type XResult<T>`)을 둔다.
-- `unwrap`/`expect` 는 테스트와 코드로 자명한 불변식에만. 환경 변수·입력·외부 응답·네트워크에는 쓰지 않는다.
-- 호출하는 쪽의 대응이 다르면 오류를 나눈다: 설정, 인증(재로그인 대상 / 계정 오류), 잘못된 데이터, 업무 거절, 전송 실패, **결과를 알 수 없는 변경**(응답 유실). 오류마다 할 일(멈춤·재로그인·재시도)을 한 곳에서 정한다.
-- 원인 체인(`source()`)은 보존하고 표시할 때 같이 보여 준다. 비밀값은 메시지에 넣지 않는다.
-- 상태를 바꾸는 요청은 멱등이거나 대조할 수 있을 때만 재시도한다. 배치는 첫 요청 전에 내용을 검증하고, 빠지거나 중복되거나 알 수 없는 결과를 성공으로 세지 않는다.
+- Return `Result` for recoverable failures. A result alias (`type XResult<T>`) is fine when used consistently at one boundary.
+- `unwrap`/`expect` only in tests or for invariants evident from the code — never for environment variables, input, external responses or network calls.
+- Split errors when callers react differently: configuration, authentication (re-login vs. bad credentials), invalid data, business rejection, transport failure, and **unknown outcome of a state change** (lost response). Decide the reaction for each error (stop / re-login / retry) in one place.
+- Keep the cause chain (`source()`) and show it when displaying the error. Never put secrets in messages.
+- Retry state-changing requests only when idempotent or reconcilable. Validate a batch before the first request; never count missing, duplicated or unrecognized results as success.
 
-## 6. 경계(외부 표현)
+## 6. Boundaries (external representations)
 
-- 안정된 외부 계약(HTTP API, DB 행, 메시지)은 타입이 있는 요청·응답 모델로. 표기 차이는 serde 속성과 경계 변환에 둔다. 흐름 코드에 문자열 키를 흩뿌리지 않는다.
-- 동적 JSON(`serde_json::Value`)은 정말 가변적인 데이터나 일부러 원본을 다룰 때만. 결정을 내리기 전에 타입으로 바꾼다. 조회한 문서를 그대로 돌려보내야 하면 필요한 필드만 타입으로, 나머지는 `#[serde(flatten)] rest: Map` 으로 보존한다.
-- 로그에 비밀번호·토큰·쿠키·일회용 코드·개인정보를 남기지 않는다. 단계(stage)와 진단에 필요한 맥락만.
+- Use typed request/response models for stable external contracts (HTTP APIs, DB rows, messages). Keep spelling differences in serde attributes and boundary conversions, not string keys scattered through workflows.
+- Use dynamic JSON (`serde_json::Value`) only for genuinely variable data or deliberately raw access, and convert to types before making decisions. When a fetched document must be sent back unchanged, type only the fields you use and keep the rest in `#[serde(flatten)] rest: Map`.
+- Never log passwords, tokens, cookies, one-time codes or personal data. Log the stage and the context needed for diagnosis.
 
-## 7. 문서·테스트·검증
+## 7. Docs, tests, verification
 
-- `rustfmt` 기본. 선언과 구현 사이는 빈 줄로 구분한다.
-- 공개 계약·실패 조건·부수 효과는 문서 주석(`///`), 코드로 드러나지 않는 결정·제약은 일반 주석.
-- 테스트는 구현 세부가 아니라 동작을: 경계 타입은 직렬화 필드 이름·enum 값·숫자/문자열 표현·필수 필드·모르는 값 처리, 흐름은 실패 경로·부분 결과·변경 결과.
-- 실서비스·계정·실제 상태 변경이 필요한 테스트는 일반 테스트와 분리한다(`#[ignore]` 등). 실제로 돌린 검증만 "확인함"으로 적는다.
-- 기본 검증: `cargo fmt --check`, `cargo check --all-targets`(지원하는 feature 조합), `cargo test`, `cargo clippy --all-targets`.
+- Format with `rustfmt`. Separate declarations and implementations with blank lines.
+- Doc comments (`///`) for public contracts, failure conditions and side effects; plain comments for decisions and constraints the code cannot express.
+- Test behavior, not implementation details: for boundary types, serialized field names, enum values, numeric vs. string representation, required fields and unknown values; for workflows, failure paths, partial results and mutation outcomes.
+- Keep tests that need live services, credentials or real state changes apart from routine tests (e.g. `#[ignore]`). Report only checks that were actually run.
+- Default checks: `cargo fmt --check`, `cargo check --all-targets` (supported feature combinations), `cargo test`, `cargo clippy --all-targets`.
