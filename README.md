@@ -8,11 +8,16 @@ harness/
 └── plugins/harness/
     ├── .claude-plugin/plugin.json
     └── skills/
-        └── github-issue/                    # /harness:github-issue
+        ├── github-issue/                    # /harness:github-issue
+        │   ├── SKILL.md
+        │   ├── assets/issue-template.md
+        │   └── references/config.md         # 저장소별 설정 형식
+        └── github-pr/                       # /harness:github-pr — 이슈 하나 = PR 하나
             ├── SKILL.md
-            ├── assets/issue-template.md
-            └── references/config.md         # 저장소별 설정 형식
+            └── assets/pr-template.md
 ```
+
+공통 문서: `docs/CODE_STYLE.md`(Rust 코드 규칙), `docs/CLEAN_ARCHITECTURE.md`(Rust 프로젝트 구조).
 
 ## 설치
 
