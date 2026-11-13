@@ -14,12 +14,13 @@ description: (초안) 이슈 기반 PR 을 적대적(adversarial)으로 검토�
 ```bash
 gh pr view <N> -R <repo> --json title,body,baseRefName,headRefName,files,commits,closingIssuesReferences
 gh pr diff <N> -R <repo>
-gh issue view <이슈> -R <repo> --comments      # Closes 로 연결된 이슈
+gh issue view <이슈> -R <repo> --json title,body,comments   # Closes/Refs 로 연결된 이슈(--comments 는 본문을 안 보여 줌)
 ```
 
 - 연결된 이슈가 없으면 그것부터 지적한다(이슈 하나 = PR 하나 원칙). 이슈의 **완료 조건·작업 내용·결정 기록·사용자 검토 필요**가 검토 기준이다.
 - 저장소 문서(`CLAUDE.md`, `README.md`, `docs/REPO_ARCHITECTURE.md`, `.claude/github-issue.yml` 의 `verify`)와 언어 가이드 `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`·`CLEAN_ARCHITECTURE.md` 를 읽는다(언어 판별은 implement 스킬과 같다).
-- PR 브랜치를 받아(`gh pr checkout <N>` — 작업 트리가 깨끗할 때, 또는 별도 worktree) 직접 실행할 수 있게 한다.
+- PR 브랜치를 받아(`gh pr checkout <N>` — 작업 트리가 깨끗할 때, 또는 별도 worktree) 직접 실행할 수 있게 한다. 설정의 `test_env` 로 검증 환경이 있는지 먼저 보고, 없으면 사용자에게 묻는다(직접 돌려 보지 못한 검증은 리뷰 요약에 "확인 못 함"으로).
+- 선후관계: 이슈의 선행 이슈가 아직 병합되지 않았는데 PR 이 그것을 전제하면 지적한다.
 
 ## 2. 공격 관점
 
@@ -29,7 +30,7 @@ gh issue view <이슈> -R <repo> --comments      # Closes 로 연결된 이슈
 2. **정확성** — 경계값, 빈 값·NULL, 알 수 없는 enum 값(성공으로 처리하지 않는가), 오류 경로, 동시성(같은 요청 두 번, 잠금 순서), 트랜잭션 중간 실패, 재시도·멱등.
 3. **삭제·이동의 잔여물** — 지운 심볼·경로·컬럼·설정 키를 저장소 전체에서 `grep`(코드·테스트·마이그레이션·스크립트·문서·Docker). 다른 저장소 클라이언트가 지운 필드를 읽는가? 배포 순서가 필요한가?
 4. **계약** — API 응답 필드·상태 코드·오류 코드·직렬화 이름이 의도와 다르게 바뀌지 않았는가(리팩토링이면 하나도 바뀌면 안 된다).
-5. **DB** — 적용된 마이그레이션 수정, 큰 테이블 잠금(`NOT NULL`·타입 변경·인덱스 생성), 운영 데이터 전제(“0건이어야 함”)가 확인 없이 들어갔는지, 되돌리기 가능성, 생성물(`.sqlx/` 등) 갱신.
+5. **DB·생성물** — 손으로 만든 생성물(`.sqlx/` 등 — 도구로 다시 만들어 diff 가 없는지 확인), 적용된 마이그레이션 수정, 병렬 PR 과 겹치는 마이그레이션 번호, 큰 테이블 잠금(`NOT NULL`·타입 변경·인덱스 생성), 운영 데이터 전제(“0건이어야 함”)가 확인 없이 들어갔는지, 되돌리기 가능성, 생성물(`.sqlx/` 등) 갱신.
 6. **테스트 품질** — 새 테스트가 구현을 되돌려도 통과하지는 않는가? 실패 경로가 있는가? 지운 테스트가 지운 동작만 검사하던 것인가, 아니면 남은 동작의 보호막이었는가? 단언을 약하게 바꾼 곳은?
 7. **보안·운영** — 비밀값·토큰·개인정보가 로그·오류 메시지·응답에 나가지 않는가, 권한 검사 누락(다른 사용자·파트너 리소스), 입력 검증.
 8. **가이드** — CODE_STYLE·CLEAN_ARCHITECTURE 위반. **규칙 조항을 인용할 수 있을 때만** 지적하고, 이 PR 이 건드린 코드에 한정한다.
