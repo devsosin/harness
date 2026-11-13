@@ -91,6 +91,7 @@ Three layers per domain, called in one direction only: **handler → usecase →
 | `repository` | DB communication only: one function per query, taking a connection/transaction (`&mut PgConnection`) and returning `entity`/`record` types | `begin`/`commit`, business decisions, dto conversion, HTTP |
 
 - Reads go through a use case too, even when it only calls one repository function — one rule, and a natural place for the next rule.
+- **Every response object is built in the use case** — including batch results (per-item failure codes and messages), export rows (CSV columns and labels) and page metadata. The handler only turns that object into bytes and headers (JSON body, CSV encoding/BOM, `Content-Disposition`, status code) and maps errors to HTTP.
 - `entity`/`record` types never reach the API: the use case converts them into the response dto (a `From` impl in `dto/` is fine — the use case calls it).
 - The name is `usecase`, not `service`: in Axum `Service` is the tower trait, and "service" is often already a domain word (service accounts, sending services).
 
