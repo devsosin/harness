@@ -122,7 +122,14 @@ function parseItem(toks, i) {
     case 'macro_rules': item.kind = 'macro'; item.name = id(j + 2); item.end = endOf(toks, j, toks[j + 3]?.v === '{' ? 'brace' : 'semi'); break;
     default: {
       let k = j; while (toks[k]?.k === 'id' || toks[k]?.v === ':') k++;
-      if (k > j && toks[k]?.v === '!') { item.kind = 'const'; item.end = endOf(toks, k + 1, toks[k + 1]?.v === '{' ? 'brace' : 'semi'); break; }
+      if (k > j && toks[k]?.v === '!') {
+        const brace = toks[k + 1]?.v === '{';
+        item.end = endOf(toks, k + 1, brace ? 'brace' : 'semi');
+        // `name! { pub enum X { .. } }` defines X: it heads X's block so `impl X` stays next to it
+        item.name = brace ? macroDefinedType(toks, k + 1) : null;
+        item.kind = item.name ? 'def' : 'const';
+        break;
+      }
       throw new Error(`unknown item at ${toks[body].s}: ${toks.slice(body, body + 4).map((t) => t.v).join(' ')}`);
     }
   }
@@ -130,6 +137,20 @@ function parseItem(toks, i) {
   item.ids = new Set(toks.slice(body, item.end).filter((t) => t.k === 'id').map((t) => t.v));
   if (item.kind === 'use') item.root = useRoot(toks, j + 1);
   return item;
+}
+
+// the one struct/enum/union/trait declared directly in a macro call's braces, or null (none or several)
+function macroDefinedType(toks, open) {
+  const close = skipBalanced(toks, open) - 1;
+  const names = new Set();
+  let d = 0;
+  for (let q = open + 1; q < close; q++) {
+    const t = toks[q];
+    if (t.k === 'p' && '([{'.includes(t.v)) d++;
+    else if (t.k === 'p' && ')]}'.includes(t.v)) d--;
+    else if (!d && t.k === 'id' && ['struct', 'enum', 'union', 'trait'].includes(t.v) && toks[q + 1]?.k === 'id') names.add(toks[q + 1].v);
+  }
+  return names.size === 1 ? [...names][0] : null;
 }
 
 function implTarget(toks, j) {
@@ -200,7 +221,14 @@ function order({ items }) {
   const by = (k) => items.filter((it) => it.kind === k);
   const mods = new Set(by('mod').map((it) => it.name));
   const useGroup = (it) => it.pub ? 3 : STD_ROOTS.has(it.root) ? 0 : (LOCAL_ROOTS.has(it.root) || mods.has(it.root) || it.root === '{') ? 2 : 1;
-  const uses = [0, 1, 2, 3].map((g) => by('use').filter((it) => useGroup(it) === g)).filter((g) => g.length);
+  // `macro_rules!` is visible only below its definition (textual scope), so a `use` of a macro defined in
+  // this file follows that macro, and a macro written above a `mod` declaration stays above the mods
+  const macros = by('macro');
+  const macroNames = new Set(macros.map((m) => m.name));
+  const reexports = (m) => by('use').filter((it) => it.root === m.name);
+  const withReexports = (ms) => ms.flatMap((m) => [m, ...reexports(m)]);
+  const lastMod = Math.max(-1, ...by('mod').map((it) => it.index));
+  const uses = [0, 1, 2, 3].map((g) => by('use').filter((it) => !macroNames.has(it.root) && useGroup(it) === g)).filter((g) => g.length);
 
   // groups: one per struct/enum/union/trait defined here, or per impl target type
   const defs = new Map(by('def').map((it) => [it.name, it]));
@@ -227,9 +255,10 @@ function order({ items }) {
   }
   const sections = [
     { items: by('extern') },
+    { items: withReexports(macros.filter((m) => m.index < lastMod)), keepBlank: true },
     { items: by('mod'), keepBlank: true },
     ...uses.map((g) => ({ items: g })),
-    { items: by('macro'), keepBlank: true },
+    { items: withReexports(macros.filter((m) => m.index > lastMod)), keepBlank: true },
     { items: by('const'), keepBlank: true },
     { items: by('type'), keepBlank: true },
     ...sorted.map((g) => ({ items: [...g.defs, ...g.inherent, ...g.traitImpls, ...g.fns], blank: true })),

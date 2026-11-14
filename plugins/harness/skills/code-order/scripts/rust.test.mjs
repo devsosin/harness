@@ -138,6 +138,61 @@ test('a file comment before the first item stays on top', () => {
   assert.equal(reorder(src(['// about this file', '', 'fn f() {}', '', 'use crate::x;'])), src(['// about this file', '', 'use crate::x;', '', 'fn f() {}']));
 });
 
+test('a use of a macro defined in the file follows that macro (textual scope)', () => {
+  const input = src([
+    'use std::fmt;',
+    '',
+    'pub struct Unknown;',
+    '',
+    'macro_rules! string_enum {',
+    '    () => {};',
+    '}',
+    '',
+    'pub(crate) use string_enum;',
+  ]);
+  assert.equal(reorder(input), src([
+    'use std::fmt;',
+    '',
+    'macro_rules! string_enum {',
+    '    () => {};',
+    '}',
+    '',
+    'pub(crate) use string_enum;',
+    '',
+    'pub struct Unknown;',
+  ]));
+  // already in that order: left alone
+  assert.equal(reorder(src(['macro_rules! m {', '    () => {};', '}', '', 'pub(crate) use m;'])), null);
+});
+
+test('a macro written above a mod declaration stays above the mods; later macros follow the uses', () => {
+  const input = src(['macro_rules! early { () => {}; }', '', 'mod a;', '', 'use crate::x;', '', 'fn f() {}', '', 'macro_rules! late { () => {}; }']);
+  assert.equal(reorder(input), src(['macro_rules! early { () => {}; }', '', 'mod a;', '', 'use crate::x;', '', 'macro_rules! late { () => {}; }', '', 'fn f() {}']));
+});
+
+test('a macro call that declares one type heads that type block, so its impl stays next to it', () => {
+  const input = src([
+    'string_enum! {',
+    '    /// kind',
+    '    pub enum Provider { Aligo = "ALIGO" }',
+    '}',
+    '',
+    'impl Provider {}',
+    '',
+    'string_enum! {',
+    '    pub enum MessageType { Sms = "SMS" }',
+    '}',
+    '',
+    'impl MessageType {}',
+  ]);
+  assert.equal(reorder(input), null);
+  // the impl written before its macro call moves after it; a call declaring no single type stays with the consts
+  assert.equal(
+    reorder(src(['impl Kind {}', '', 'lazy! { static ref X: u8 = 1; }', '', 'string_enum! { pub enum Kind { A = "A" } }'])),
+    src(['lazy! { static ref X: u8 = 1; }', '', 'string_enum! { pub enum Kind { A = "A" } }', '', 'impl Kind {}']),
+  );
+});
+
 test('CRLF files stay CRLF', () => {
   assert.equal(reorder('impl S {}\r\nstruct S;\r\n'), 'struct S;\r\n\r\nimpl S {}\r\n');
 });

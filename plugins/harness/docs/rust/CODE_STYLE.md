@@ -50,8 +50,8 @@ Top-level items in a file follow this order (checked and applied by the `code-or
 1. Inner docs and attributes (`//!`, `#![...]`), `extern crate`
 2. `mod` declarations
 3. `use`, in blank-line-separated groups: `std`/`core`/`alloc` → external crates → `crate`/`super`/`self`/this file's modules → `pub use` re-exports
-4. `macro_rules!`, then `const`/`static`, then `type` aliases (shared types normally live in `types.rs`)
-5. One block per type, in the order the types are defined: definition (`struct`/`enum`/`trait`) → inherent `impl` → trait `impl`s → free functions those items call (transitively, in first-use order). An `impl` of a type defined elsewhere forms its own block; a local trait's impl for an outside type follows the trait.
+4. `macro_rules!`, then `const`/`static`, then `type` aliases (shared types normally live in `types.rs`). A `macro_rules!` is visible only below its definition, so compiling wins over this order: a `use` of a macro defined in the file (`pub(crate) use my_macro;`) follows that macro, and a macro written above a `mod` declaration stays above the mods.
+5. One block per type, in the order the types are defined: definition (`struct`/`enum`/`trait`, or a macro call that declares exactly one, like `string_enum! { pub enum Kind { .. } }`) → inherent `impl` → trait `impl`s → free functions those items call (transitively, in first-use order). An `impl` of a type defined elsewhere forms its own block; a local trait's impl for an outside type follows the trait.
 6. Free functions no block uses, then non-test inline modules, then `#[cfg(test)] mod tests` last
 
 Most files hold one main type, so this reads as: imports → constants → the type → its impls → its helpers → tests.
