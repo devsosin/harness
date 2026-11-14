@@ -93,6 +93,51 @@ test('unknown top-level syntax is refused, not guessed', () => {
   assert.throws(() => reorder('struct A;\n???\n'));
 });
 
+test('a comment followed by a blank line heads a section: it stays, items are ordered within it', () => {
+  const input = src([
+    '// file note',
+    '',
+    'use crate::x;',
+    '',
+    '// ---------- carriers ----------',
+    '',
+    'fn carriers() {}',
+    '',
+    'struct CarrierQuery;',
+    '',
+    '// ---------- devices ----------',
+    '',
+    'fn devices() {}',
+    '',
+    '/// device body',
+    'struct DeviceBody;',
+  ]);
+  assert.equal(reorder(input), src([
+    '// file note',
+    '',
+    'use crate::x;',
+    '',
+    '// ---------- carriers ----------',
+    '',
+    'struct CarrierQuery;',
+    '',
+    'fn carriers() {}',
+    '',
+    '// ---------- devices ----------',
+    '',
+    '/// device body',
+    'struct DeviceBody;',
+    '',
+    'fn devices() {}',
+  ]));
+  // a comment directly above an item (no blank line) still moves with it
+  assert.equal(reorder(src(['// note', 'fn f() {}', '', 'struct S;'])), src(['struct S;', '', '// note', 'fn f() {}']));
+});
+
+test('a file comment before the first item stays on top', () => {
+  assert.equal(reorder(src(['// about this file', '', 'fn f() {}', '', 'use crate::x;'])), src(['// about this file', '', 'use crate::x;', '', 'fn f() {}']));
+});
+
 test('CRLF files stay CRLF', () => {
   assert.equal(reorder('impl S {}\r\nstruct S;\r\n'), 'struct S;\r\n\r\nimpl S {}\r\n');
 });

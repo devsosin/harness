@@ -57,6 +57,7 @@ function lex(src) {
 }
 
 // ---------- item split ----------
+const BLANK = /\n[ \t]*\n/;
 const isComment = (t) => t && (t.k === 'lc' || t.k === 'bc');
 const isInnerDoc = (t) => isComment(t) && (t.v.startsWith('//!') || t.v.startsWith('/*!'));
 
@@ -164,11 +165,19 @@ function split(src) {
     if (toks[i]?.v === '#' && toks[i + 1]?.v === '!' && toks[i + 2]?.v === '[') { i = skipBalanced(toks, i + 2); continue; }
     break;
   }
-  const headerEnd = i ? toks[i - 1].e : 0;
+  let headerEnd = i ? toks[i - 1].e : 0;
   const items = [];
   while (i < toks.length) {
     const it = parseItem(toks, i);
     if (!it) break;
+    // a comment followed by a blank line is not the item's: it heads a section (the code below it)
+    let d = -1;
+    for (let k = it.start; isComment(toks[k]); k++) if (BLANK.test(src.slice(toks[k].e, toks[k + 1].s))) d = k;
+    if (d >= 0) {
+      if (!items.length) headerEnd = toks[d].e; // before the first item: part of the file header
+      else it.heading = src.slice(src.lastIndexOf('\n', toks[it.start].s - 1) + 1, toks[d].e);
+      it.start = d + 1;
+    }
     let end = it.end;
     // a trailing `// note` on the item's last line belongs to the item
     if (toks[end]?.k === 'lc' && !src.slice(toks[end - 1].e, toks[end].s).includes('\n')) end++;
@@ -176,7 +185,7 @@ function split(src) {
     const lineStart = src.lastIndexOf('\n', s - 1) + 1;
     it.text = src.slice(/^\s*$/.test(src.slice(lineStart, s)) ? lineStart : s, toks[end - 1].e).replace(/^\n+/, '');
     const prevEnd = items.length ? items[items.length - 1].srcEnd : headerEnd;
-    it.blankBefore = /\n[ \t]*\n/.test(src.slice(prevEnd, s));
+    it.blankBefore = BLANK.test(src.slice(it.heading ? toks[it.start - 1].e : prevEnd, s));
     it.srcEnd = toks[end - 1].e;
     it.index = items.length;
     items.push(it);
@@ -232,22 +241,37 @@ function order({ items }) {
   return sections;
 }
 
-function render(parsed, sections) {
+// a section comment (`// ---- name ----` followed by a blank line) stays in place; items are ordered within their section
+function orderSegments({ items }) {
+  const segments = [];
+  for (const it of items) {
+    if (it.heading || !segments.length) segments.push({ heading: it.heading, items: [] });
+    segments[segments.length - 1].items.push(it);
+  }
+  return segments.map((s) => ({ heading: s.heading, sections: order(s) }));
+}
+
+function render(parsed, segments) {
   const parts = [];
   if (parsed.header) parts.push(parsed.header);
-  for (const s of sections) {
-    parts.push(s.items.map((it, k) => (k === 0 ? '' : s.blank || (s.keepBlank && it.blankBefore) ? '\n' : '') + it.text).join('\n'));
+  for (const seg of segments) {
+    if (seg.heading) parts.push(seg.heading);
+    for (const s of seg.sections) {
+      parts.push(s.items.map((it, k) => (k === 0 ? '' : s.blank || (s.keepBlank && it.blankBefore) ? '\n' : '') + it.text).join('\n'));
+    }
   }
   if (parsed.footer) parts.push(parsed.footer);
   return parts.join('\n\n') + '\n';
 }
 
-function moved(parsed, sections) {
-  const flat = sections.flatMap((s) => s.items);
+function moved(parsed, segments) {
+  const flat = segments.flatMap((seg) => seg.sections.flatMap((s) => s.items));
   if (flat.some((it, k) => it.index !== k)) return true;
   // use groups: a blank line must separate groups and only groups
-  const uses = sections.filter((s) => s.items[0].kind === 'use');
-  return uses.some((s, g) => s.items.some((it, k) => (g > 0 || k > 0) && it.blankBefore !== (k === 0)));
+  return segments.some((seg) => {
+    const uses = seg.sections.filter((s) => s.items[0].kind === 'use');
+    return uses.some((s, g) => s.items.some((it, k) => (g > 0 || k > 0) && it.blankBefore !== (k === 0)));
+  });
 }
 
 const squash = (s) => s.replace(/\s+/g, '');
@@ -256,9 +280,9 @@ export function reorder(text) {
   const crlf = text.includes('\r\n');
   const src = text.replace(/\r\n/g, '\n');
   const parsed = split(src);
-  const sections = order(parsed);
-  if (!moved(parsed, sections)) return null;
-  const out = render(parsed, sections);
+  const segments = orderSegments(parsed);
+  if (!moved(parsed, segments)) return null;
+  const out = render(parsed, segments);
   // safety: same characters, only reordered
   if ([...squash(out)].sort().join('') !== [...squash(src)].sort().join('')) throw new Error('content changed while reordering (bug)');
   return crlf ? out.replace(/\n/g, '\r\n') : out;

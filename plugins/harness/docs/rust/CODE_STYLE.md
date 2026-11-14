@@ -56,6 +56,8 @@ Top-level items in a file follow this order (checked and applied by the `code-or
 
 Most files hold one main type, so this reads as: imports → constants → the type → its impls → its helpers → tests.
 
+A plain comment followed by a blank line is a section heading (e.g. `// ---------- carriers ----------`), not part of the next item: it stays where it is and the order above applies within each section. A comment directly above an item (no blank line) moves with that item. A file with many sections usually wants splitting by section instead.
+
 ## 8. Docs, tests, verification
 
 - Format with `rustfmt`. Separate declarations and implementations with blank lines.
