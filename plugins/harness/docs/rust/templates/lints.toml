@@ -1,0 +1,25 @@
+# Lints enforcing CODE_STYLE.md ([lint: ...] tags). Copy into Cargo.toml.
+# - Single crate: paste as-is.
+# - Workspace: rename the tables to [workspace.lints.rust] / [workspace.lints.clippy]
+#   in the root Cargo.toml and add `[lints] workspace = true` to each member.
+# Everything is "warn" so local builds keep going; CI runs clippy with -D warnings.
+# Pair with templates/clippy.toml (unwrap allowed in tests, bool parameter limit).
+# Lints already on by default (ptr_arg, borrowed_box, wrong_self_convention,
+# new_without_default, unnecessary_unwrap, len_without_is_empty, ...) are not repeated.
+
+[lints.rust]
+rust_2018_idioms = { level = "warn", priority = -1 }
+# Libraries only (§8):
+# missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"                 # §5
+dbg_macro = "warn"                   # §8
+todo = "warn"                        # §8
+undocumented_unsafe_blocks = "warn"  # §8
+wildcard_imports = "warn"            # §7 (use super::* in test modules is allowed)
+needless_for_each = "warn"           # §8
+fn_params_excessive_bools = "warn"   # §2
+# Libraries only (§8):
+# missing_errors_doc = "warn"
+# missing_panics_doc = "warn"

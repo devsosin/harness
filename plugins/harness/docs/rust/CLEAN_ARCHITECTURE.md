@@ -11,6 +11,7 @@ Shared module and file layout rules for Rust repositories. For code rules, see [
 - **Group by feature (domain)**, not by layer (`models/`, `services/`, `controllers/`) first. Layers live *inside* a feature (web service: handler → usecase → repository, §3).
 - **Share only what two or more places actually use.** Otherwise keep it where it is used.
 - Create a file only for a clear responsibility. A small feature can be a single `mod.rs`.
+- **Once a module has child modules, its `mod.rs` holds only connecting code**: `mod` declarations, re-exports, entry points (including the module's entry type, e.g. the client struct) and the workflow's step order. Other types, conversions and helper logic move into the children.
 
 ## 2. Feature folder (all shapes)
 

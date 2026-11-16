@@ -25,9 +25,16 @@ harness/
             └── scripts/rust.mjs, rust.test.mjs   # Node 18+, 의존성 없음
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
+            └── templates/                    # lints.toml, clippy.toml, rust-ci.yml — 각 저장소에 복사해 CI 로 검사
 ```
 
 공통 문서는 플러그인 안 `plugins/harness/docs/<lang>/` 에 둔다. 설치하면 플러그인 폴더만 캐시로 복사되므로 저장소 루트의 파일은 스킬이 읽을 수 없다. 새 언어는 `docs/<lang>/CODE_STYLE.md`(+ `CLEAN_ARCHITECTURE.md`)를 더하고 implement 스킬의 언어 판별 목록에 확장자를 추가한다.
+
+외부 스타일 가이드는 비교·검토용으로 텍스트만 받아 `references/`(git 제외)에 섹션별 파일로 둔다:
+
+```bash
+node scripts/fetch-reference.mjs https://google.github.io/styleguide/rustguide.html references/rust-style-guide/google
+```
 
 ## 설치
 
