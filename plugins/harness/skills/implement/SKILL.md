@@ -44,6 +44,7 @@ gh issue view <선행 N> -R <repo> --json state,closedByPullRequestsReferences
 
 - 경로: `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`, 구조는 같은 폴더의 `CLEAN_ARCHITECTURE.md`
 - 언어 판별: `Cargo.toml`·`.rs` → `rust`. 그 밖의 언어는 `ls ${CLAUDE_SKILL_DIR}/../../docs/` 로 있는 폴더를 확인한다.
+- lint·CI 설정은 같은 폴더의 `templates/`(Rust: `lints.toml`·`clippy.toml`·`rust-ci.yml`). 저장소에 lint 설정이 없으면 이슈 범위 밖이므로 넣지 말고, 필요하면 PR "참고"에 제안만 적는다.
 - 해당 언어 폴더가 없으면 저장소 문서와 그 언어의 일반 관례를 따르고, PR 의 "참고"에 가이드 없음을 적는다.
 
 ### 1.5 테스트 환경 — 없으면 먼저 묻는다

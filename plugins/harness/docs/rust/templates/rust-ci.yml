@@ -1,0 +1,46 @@
+# CI for CODE_STYLE.md. Copy to .github/workflows/rust.yml.
+# Needs templates/lints.toml in Cargo.toml and templates/clippy.toml at the root.
+name: rust
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      # List each supported feature combination if the crate has features.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      # Item order (§7). Pin `ref` to a harness tag or commit for reproducible runs.
+      - name: Fetch code-order script
+        uses: actions/checkout@v4
+        with:
+          repository: devsosin/harness
+          ref: main
+          path: .harness
+          sparse-checkout: plugins/harness/skills/code-order/scripts
+
+      # Add the existing directories among tests, examples, benches.
+      - name: Item order
+        run: node .harness/plugins/harness/skills/code-order/scripts/rust.mjs src

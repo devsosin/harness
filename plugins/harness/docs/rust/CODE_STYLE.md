@@ -1,38 +1,42 @@
 # Rust Code Style
 
-Shared code rules for Rust repositories (API client libraries, executables, web services). For module and file layout, see [CLEAN_ARCHITECTURE.md](CLEAN_ARCHITECTURE.md). When a repository's own docs differ from this guide, follow the repository.
+Shared code rules for Rust repositories (API client libraries, executables, web services). For module and file layout, see [CLEAN_ARCHITECTURE.md](CLEAN_ARCHITECTURE.md). When a repository's own docs differ from this guide, follow the repository. Anything not covered here follows the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
+
+- API rules are binding for **library** code (used by other crates) and a strong recommendation for **application** code, which favors directness over reuse.
+- Tags say what enforces a rule: `[fmt]` rustfmt, `[lint: name]` a lint from [templates/lints.toml](templates/lints.toml) (CI fails), `[order]` the `code-order` script. An untagged rule is checked in review — that is where explanations stay.
 
 ## 1. Construction
 
 - Build application types with `Type::new(..)` rather than struct literals at call sites. Keep fields private by default; put initialization rules in the type's `impl`.
-- If construction needs validation, `new` returns `Result<Self, Error>`. Do not panic.
-- For many unrelated arguments, introduce a parameter type or a builder.
-- Entry points: `new` (explicit inputs), `Default` (a complete, meaningful default), `from_env` (environment config, fallible → `Result`), `From`/`TryFrom` (conversions). External responses are built by deserialization; do not add unused constructors.
+- Validated construction is `try_new(..) -> Result<Self, Error>`. Do not panic.
+- For many unrelated arguments, introduce a parameter type or a builder. An options struct with public fields implements `Default`.
+- Entry points: `new` (explicit inputs), `Default` (a complete, meaningful default; required when `new` takes no arguments `[lint: new_without_default]`), `from_env` (environment config → `Result`), `From`/`TryFrom` (conversions). External responses are built by deserialization; do not add unused constructors.
 
 ## 2. Fixed values are enums
 
-- Model statuses, modes, kinds and policies as enums, not strings or several bools. Accept the enum in function parameters too.
+- Model statuses, modes, kinds and policies as enums, not strings or several bools. Accept the enum in function parameters too `[lint: fn_params_excessive_bools]`.
 - Match external spelling with `#[serde(rename/rename_all)]`.
 - Unknown external values: reject if accepting breaks a contract; `#[serde(other)] Unknown` if they can be ignored; `Other(String)` if the original is needed. **Never treat an unknown value as success or as eligible for a state change.**
+- A library's public enum that may grow is `#[non_exhaustive]`; closed sets (`Visible`/`Hidden`) are not.
 - Put an enum in the `types.rs` of the narrowest module that owns the concept; promote it to a shared domain module only when several features use it.
 
 ## 3. Ownership and visibility
 
-- Borrow (`&str`, `&[T]`) when only reading; take owned values (`String`, `Vec<T>`) when storing or consuming. Clone only with a reason.
+- Borrow when only reading — `&str`, `&[T]`, `&T`, `Option<&T>`, not `&String`, `&Vec<T>`, `&Box<T>` `[lint: ptr_arg, borrowed_box]`; take owned values when storing or consuming. Clone only with a reason.
 - Use the narrowest visibility: private → `pub(super)` → `pub(crate)` → `pub`. Do not generate a getter and setter for every field.
-- Use `Arc`/`Mutex` only for genuinely shared state.
+- Use `Arc`/`Mutex` only for genuinely shared state, not to avoid designing ownership.
 
 ## 4. Naming
 
-- Types and variants `UpperCamelCase`, functions and fields `snake_case`, constants `SCREAMING_SNAKE_CASE`.
-- Name by role: `CreateOrderRequest`, `OrderPage`, `OrderStatus`, `RetryPolicy`. Drop prefixes that repeat the module name.
-- Conversions: `as_*` (borrowed view), `to_*` (non-consuming conversion), `into_*` (consuming).
+- Types and variants `UpperCamelCase`, functions and fields `snake_case`, constants `SCREAMING_SNAKE_CASE` `[lint: rustc default]`.
+- Name by role: `CreateOrderRequest`, `OrderPage`, `OrderStatus`, `RetryPolicy`. Drop prefixes that repeat the module name. No abbreviations an outsider would not know.
+- Conversions: `as_*` (borrowed view), `to_*` (non-consuming), `into_*` (consuming) `[lint: wrong_self_convention]`. Accessors: `foo()`, `foo_mut()`, `set_foo()`, `take_foo()`.
 - No `_` prefix on private functions; name them after what they do.
 
 ## 5. Errors
 
-- Return `Result` for recoverable failures. A result alias (`type XResult<T>`) is fine when used consistently at one boundary.
-- `unwrap`/`expect` only in tests or for invariants evident from the code — never for environment variables, input, external responses or network calls.
+- `Option` when the cause is obvious, `Result` for recoverable failures, `panic!` only for bugs (broken invariants). A result alias (`type XResult<T>`) is fine when used consistently at one boundary.
+- No `unwrap` outside tests `[lint: unwrap_used]`. `expect("why this holds")` only for invariants evident from the code — never for environment variables, input, external responses or network calls. Prefer `if let`/`let else` over check-then-unwrap `[lint: unnecessary_unwrap]`.
 - Split errors when callers react differently: configuration, authentication (re-login vs. bad credentials), invalid data, business rejection, transport failure, and **unknown outcome of a state change** (lost response). Decide the reaction for each error (stop / re-login / retry) in one place.
 - Keep the cause chain (`source()`) and show it when displaying the error. Never put secrets in messages.
 - Retry state-changing requests only when idempotent or reconcilable. Validate a batch before the first request; never count missing, duplicated or unrecognized results as success.
@@ -43,9 +47,11 @@ Shared code rules for Rust repositories (API client libraries, executables, web 
 - Use dynamic JSON (`serde_json::Value`) only for genuinely variable data or deliberately raw access, and convert to types before making decisions. When a fetched document must be sent back unchanged, type only the fields you use and keep the rest in `#[serde(flatten)] rest: Map`.
 - Never log passwords, tokens, cookies, one-time codes or personal data. Log the stage and the context needed for diagnosis.
 
-## 7. Item order
+## 7. Imports and item order
 
-Top-level items in a file follow this order (checked and applied by the `code-order` skill, `scripts/rust.mjs`):
+- No glob imports, except `use super::*` in test modules `[lint: wildcard_imports]`. Import types and traits by name; call free functions from other modules through their module (`mem::swap(..)`).
+
+Top-level items in a file follow this order `[order]` (checked and applied by the `code-order` skill, `scripts/rust.mjs`):
 
 1. Inner docs and attributes (`//!`, `#![...]`), `extern crate`
 2. `mod` declarations
@@ -58,10 +64,12 @@ Most files hold one main type, so this reads as: imports → constants → the t
 
 A plain comment followed by a blank line is a section heading (e.g. `// ---------- carriers ----------`), not part of the next item: it stays where it is and the order above applies within each section. A comment directly above an item (no blank line) moves with that item. A file with many sections usually wants splitting by section instead.
 
-## 8. Docs, tests, verification
+## 8. Code, docs, tests, verification
 
-- Format with `rustfmt`. Separate declarations and implementations with blank lines.
-- Doc comments (`///`) for public contracts, failure conditions and side effects; plain comments for decisions and constraints the code cannot express.
-- Test behavior, not implementation details: for boundary types, serialized field names, enum values, numeric vs. string representation, required fields and unknown values; for workflows, failure paths, partial results and mutation outcomes.
+- Format with `rustfmt` defaults `[fmt]`; `#[rustfmt::skip]` only for deliberate alignment or generated code. Separate declarations and implementations with blank lines.
+- Prefer a `for` loop over long or side-effecting combinator chains and `for_each` `[lint: needless_for_each]`; bind a chain to a named variable before looping over it. No `dbg!`/`todo!` in committed code `[lint: dbg_macro, todo]`.
+- `unsafe` only when safe code cannot do it, wrapped in a safe API, with a `// SAFETY:` comment `[lint: undocumented_unsafe_blocks]`.
+- Doc comments (`///`) for public contracts, failure conditions (`# Errors`, `# Panics`) and side effects `[lint: missing_docs, missing_errors_doc, missing_panics_doc — libraries]`; plain comments for decisions and constraints the code cannot express. Do not restate the name.
+- Test behavior, not implementation details: for boundary types, serialized field names, enum values, numeric vs. string representation, required fields and unknown values; for workflows, failure paths, partial results and mutation outcomes. Give `assert!` a message when the reason is not obvious.
 - Keep tests that need live services, credentials or real state changes apart from routine tests (e.g. `#[ignore]`). Report only checks that were actually run.
-- Default checks: `cargo fmt --check`, `cargo check --all-targets` (supported feature combinations), `cargo test`, `cargo clippy --all-targets`.
+- Checks (same as [templates/rust-ci.yml](templates/rust-ci.yml)): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (supported feature combinations), `cargo test`, `code-order` script.
