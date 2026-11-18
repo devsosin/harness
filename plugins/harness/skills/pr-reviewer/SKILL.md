@@ -1,118 +1,120 @@
 ---
 name: pr-reviewer
-description: (초안) 이슈 기반 PR 을 적대적(adversarial)으로 검토하는 절차 — PR 이 연결된 이슈의 완료 조건·결정을 정말 지키는지, 무엇이 깨질 수 있는지를 구체적인 실패 시나리오와 근거(파일:줄, 실행 결과)로 찾아 PR 리뷰로 남긴다. harness 의 docs/<lang>/ 가이드 위반도 본다. 사용자가 "PR #N 리뷰해/검토해", "이 PR 문제 없는지 봐줘", "머지해도 돼?", "owner/repo#N 리뷰", PR 링크를 주고 확인을 부탁할 때, implement 스킬로 만든 PR 을 다른 세션에서 검토할 때 쓴다.
+description: (초안) 이슈 기반 PR 을 적대적으로 검토한다 — 연결된 이슈의 완료 조건·결정을 지키는지, 무엇이 깨질 수 있는지를 실패 시나리오와 근거(파일:줄, 실행 결과)로 찾아 리뷰로 남긴다. 사용자가 "PR #N 리뷰해/검토해", "이 PR 문제 없는지 봐줘", "머지해도 돼?", "owner/repo#N 리뷰" 라고 하거나 PR 링크를 주고 확인을 부탁할 때, implement 로 만든 PR 을 다른 세션에서 검토할 때 쓴다.
 ---
 
-# PR 적대적 리뷰 (초안)
+# Adversarial PR review (draft)
 
-리뷰어의 일은 **이 PR 이 틀렸다는 증거를 찾는 것**이다. 작성자의 설명(PR 본문, 커밋 메시지)은 주장일 뿐이니 코드와 실행 결과로 확인한다. 반대로, 증명하지 못한 의심은 지적으로 올리지 않는다 — 근거 없는 지적이 많으면 진짜 문제가 묻힌다.
+The reviewer's job is **to find evidence that this PR is wrong**. The author's description (PR body, commit messages) is only a claim; check it against code and execution results. Conversely, do not raise suspicions you cannot prove — many unsupported findings bury the real problems.
 
-구현한 세션과 **다른 세션**에서 쓴다. 같은 맥락을 가진 세션은 같은 가정을 반복한다. 같은 이유로 구현 세션의 스택·워크트리를 이어 쓰지 않는다 — implement 는 PR 을 올린 뒤 그것을 정리하고(cleanup 스킬), 리뷰어는 저장소의 `test_env` 로 자기 환경을 다시 만들어 직접 돌린다.
+Use it in a **different session** from the one that implemented. A session with the same context repeats the same assumptions. For the same reason, do not reuse the implementing session's stack or worktree — implement cleans those up after opening the PR (cleanup skill), and the reviewer rebuilds its own environment from the repo's `test_env` and runs things itself.
 
-## 1. 자료 모으기
+Output language: the review body, issue comments and reports follow the repo setting `language` in `.claude/github-issue.yml` (if missing, the user's language). Severity names in the output use that language too (e.g. Korean: 차단·중요·사소·질문).
+
+## 1. Gather
 
 ```bash
 gh pr view <N> -R <repo> --json state,mergedAt,title,body,baseRefName,headRefName,headRefOid,files,commits,closingIssuesReferences
 gh pr diff <N> -R <repo>
-gh issue view <이슈> -R <repo> --json title,body,comments   # Closes/Refs 로 연결된 이슈(--comments 는 본문을 안 보여 줌)
+gh issue view <issue> -R <repo> --json title,body,comments   # the issue linked by Closes/Refs (--comments hides the body)
 ```
 
-- **병합 상태**를 시작할 때 본다(`state`, `mergedAt`). 이미 병합된 PR 이면 "병합 후 리뷰"로 진행한다(§5). 검토 기준 커밋(`headRefOid`)과 기본 브랜치 커밋을 적어 둔다.
-- 연결된 이슈가 없으면 그것부터 지적한다(이슈 하나 = PR 하나 원칙). 이슈의 **완료 조건·작업 내용·결정 기록·사용자 검토 필요**가 검토 기준이다.
-- 저장소 문서(`CLAUDE.md`, `README.md`, `docs/REPO_ARCHITECTURE.md`, `.claude/github-issue.yml` 의 `verify`)와 언어 가이드 `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`·`CLEAN_ARCHITECTURE.md` 를 읽는다(언어 판별은 implement 스킬과 같다).
-- PR 브랜치와 기본 브랜치를 각각 별도 worktree 로 받아 직접 실행할 수 있게 한다 — `.claude/worktrees/<id-소문자>-review-pr`, `…-review-base` 처럼 이름에 이슈 ID 와 `review` 를 넣는다(끝난 뒤 정리할 대상을 알아보게). 설정의 `test_env` 로 검증 환경이 있는지 먼저 보고, 없으면 사용자에게 묻는다(직접 돌려 보지 못한 검증은 리뷰 요약에 "확인 못 함"으로).
-- 공유 개발 DB 가 있으면 그것을 쓴다(`test_env.setup`). 이슈 전용 스택이 필요하면(`test_env.isolated` 등) **스택 하나만** `-p <id-소문자>-review` 로 띄운다 — implement 의 `-p <id>` 와 겹치지 않는다. 두 워크트리를 각각 스택으로 띄우면 빌드 캐시(Rust `target` 은 수십 GB)와 메모리가 두 배가 된다. 저장소 루트를 마운트하는 개발 컨테이너면 `.claude/worktrees/` 아래 두 워크트리가 이미 컨테이너 안에 보이므로, 같은 컨테이너에서 같은 `CARGO_TARGET_DIR`(등 빌드 캐시)로 한쪽씩 빌드·테스트한다(의존성 빌드가 재사용된다).
-- 빌드 전에 Docker 메모리를 본다(implement §1.5 "Docker 메모리" — 모자라면 `-j` 를 낮춘다). 긴 빌드·테스트는 출력을 컨테이너 안 파일로 남긴다(같은 절).
-- 두 쪽 테스트는 **차례로** 돌린다. 같은 DB 서버(공유 개발 DB 등)를 쓰는 테스트를 동시에 돌리면 공용 준비 단계(역할 생성·기준선 적재)가 충돌해 둘 다 실패할 수 있다 — 동시에 돌려야 하면 DB 서버를 나눈다.
-- 선후관계: 이슈의 선행 이슈가 아직 병합되지 않았는데 PR 이 그것을 전제하면 지적한다.
+- Check **merge state** first (`state`, `mergedAt`). If already merged, do a "post-merge review" (§5). Record the reviewed commit (`headRefOid`) and the default branch commit.
+- If no issue is linked, flag that first (one issue = one PR). The issue's **Done when, Work, Decision log and Needs user review** are the review criteria.
+- Read the repo docs (`CLAUDE.md`, `README.md`, `docs/REPO_ARCHITECTURE.md`, `verify` in `.claude/github-issue.yml`) and the language guides `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md` and `CLEAN_ARCHITECTURE.md` (language detection as in the implement skill).
+- Check out the PR branch and the default branch as separate worktrees so you can run both — name them with the issue ID and `review`, e.g. `.claude/worktrees/<id-lowercase>-review-pr` and `…-review-base` (so cleanup can recognize them). Check `test_env` for a verification environment first; if there is none, ask the user (checks you could not run go into the summary as "not verified").
+- Use the shared dev DB if there is one (`test_env.setup`). If an issue-specific stack is needed (`test_env.isolated` etc.), bring up **one stack only** with `-p <id-lowercase>-review` — it does not collide with implement's `-p <id>`. A stack per worktree doubles build caches (Rust `target` runs to tens of GB) and memory. If the dev container mounts the repo root, both worktrees under `.claude/worktrees/` are already visible inside it; build and test one side at a time in the same container with the same `CARGO_TARGET_DIR` (or other build cache) so dependency builds are reused.
+- Check Docker memory before building (implement §1.5 "Docker memory" — lower `-j` if short). Long builds and tests log to a file inside the container (same section).
+- Run the two sides' tests **one after the other**. Tests sharing a DB server (e.g. the shared dev DB) can collide in common setup (role creation, baseline load) and both fail — split DB servers if they must run at once.
+- Order: if the PR assumes a prerequisite issue that has not merged yet, flag it.
 
-## 2. 공격 관점
+## 2. Angles of attack
 
-각 관점에서 "이게 깨지는 입력·상태·순서는?"을 묻는다. 해당 없는 관점은 건너뛴다.
+For each angle ask "what input, state or order breaks this?" Skip angles that do not apply.
 
-1. **이슈 대조** — 완료 조건마다 증명하는 테스트가 있는가? 결정 기록과 다르게 구현한 곳은? 이슈 범위 밖 변경(관련 없는 리팩토링·포맷)은? 열린 검토 항목을 작성자가 임의로 결정했는가?
-2. **정확성** — 경계값, 빈 값·NULL, 알 수 없는 enum 값(성공으로 처리하지 않는가), 오류 경로, 동시성(같은 요청 두 번, 잠금 순서), 트랜잭션 중간 실패, 재시도·멱등.
-3. **삭제·이동의 잔여물** — 지운 심볼·경로·컬럼·설정 키를 저장소 전체에서 `grep`(코드·테스트·마이그레이션·스크립트·문서·Docker). 다른 저장소 클라이언트가 지운 필드를 읽는가? 배포 순서가 필요한가?
-4. **계약** — API 응답 필드·상태 코드·오류 코드·직렬화 이름이 의도와 다르게 바뀌지 않았는가(리팩토링이면 하나도 바뀌면 안 된다).
-   - **구조 변경(리팩토링) PR 이면 기계적으로 비교한다** — 손으로 따라가기 전에 먼저: (a) 옮겨진 SQL 문자열을 옛 위치·새 위치에서 모아 공백만 정규화해 비교(개수·내용), (b) 요청·응답 타입을 타입별로 필드·`serde`·검증 속성까지 비교, (c) 기본 브랜치와 PR 의 테스트 이름 목록 diff(늘어난 것 = PR 이 말한 고정 테스트뿐인지). 비교 스크립트는 리뷰용으로만 쓰고 커밋하지 않는다. 차이가 0 이면 그 사실과 비교 범위를 요약에 적는다.
-     - **동적 SQL**(`format!`·문자열 상수·조각을 이어 붙이는 쿼리, `AssertSqlSafe`/`raw_sql` 에 넘기는 값)은 정적 문자열 추출로 비교하지 않는다 — 엉뚱한 문자열을 집어 없는 차이를 만든다. 상수·조각(예: `FROM_WHERE`, 정렬·검색 조각) 단위로 옛 위치와 새 위치를 바이트 비교하고, 조립 순서가 같은지 코드로 확인한다. 추출 결과마다 출처(파일:줄)를 함께 출력해 거짓 차이를 가린다.
-     - **개수 차이를 따로 적는다**: 문자열은 같은데 호출 수가 다르면 대개 같은 문장이 함수 하나로 합쳐진 것이다. "중복 제거로 인한 차이 N — `<문장>` 을 `<새 함수>` 하나로 합침, 옛 호출 위치 → 새 호출 위치"처럼 따로 적고, 호출 위치·순서가 그대로인지 확인한다. 합쳐진 것이 아니라 사라진 문장이면 지적 후보다.
-5. **DB·생성물** — 손으로 만든 생성물(`.sqlx/` 등 — 도구로 다시 만들어 diff 가 없는지 확인), **스키마를 바꾸는 PR(마이그레이션 추가)이면 그 마이그레이션까지 적용한 임시 DB 로 `prepare --check` 를 직접 돌린다**(작성자가 이전 스키마로 만들었으면 오프라인 빌드는 통과해도 실제 스키마에서 깨진다), 적용된 마이그레이션 수정, 병렬 PR 과 겹치는 마이그레이션 번호, 큰 테이블 잠금(`NOT NULL`·타입 변경·인덱스 생성), 운영 데이터 전제(“0건이어야 함”)가 확인 없이 들어갔는지, 되돌리기 가능성, 생성물(`.sqlx/` 등) 갱신.
-6. **테스트 품질** — 새 테스트가 구현을 되돌려도 통과하지는 않는가? 실패 경로가 있는가? 지운 테스트가 지운 동작만 검사하던 것인가, 아니면 남은 동작의 보호막이었는가? 단언을 약하게 바꾼 곳은?
-7. **보안·운영** — 비밀값·토큰·개인정보가 로그·오류 메시지·응답에 나가지 않는가, 권한 검사 누락(다른 사용자·파트너 리소스), 입력 검증.
-8. **가이드** — CODE_STYLE·CLEAN_ARCHITECTURE 위반. **규칙 조항을 인용할 수 있을 때만** 지적하고, 이 PR 이 건드린 코드에 한정한다. `[fmt]`·`[lint: ..]`·`[order]` 태그가 붙은 규칙은 도구가 잡으므로 검증 명령 실패로만 지적하고, 태그 없는 규칙(리뷰로만 확인되는 것)에 집중한다.
+1. **Against the issue** — is every "done when" item proven by a test? Anything implemented differently from the decision log? Changes outside the issue's scope (unrelated refactors, formatting)? Did the author decide an open review item alone?
+2. **Correctness** — edge values, empty/NULL, unknown enum values (not treated as success?), error paths, concurrency (same request twice, lock order), failure mid-transaction, retries and idempotency.
+3. **Leftovers of removals and moves** — `grep` the whole repo for removed symbols, paths, columns and config keys (code, tests, migrations, scripts, docs, Docker). Do clients in other repos read a removed field? Is a deploy order needed?
+4. **Contracts** — did API response fields, status codes, error codes or serialized names change unintentionally (in a refactor, none may change)?
+   - **For structure-only (refactor) PRs, compare mechanically** before tracing by hand: (a) collect moved SQL strings from old and new locations, normalize whitespace only, and compare (count and content); (b) compare request/response types field by field including `serde` and validation attributes; (c) diff the test name lists of the default branch and the PR (are the additions only the pinning tests the PR claims?). Comparison scripts are for review only; never commit them. If the difference is zero, state that and the comparison scope in the summary.
+     - **Dynamic SQL** (queries assembled with `format!`, string constants or fragments; values passed to `AssertSqlSafe`/`raw_sql`) must not be compared by static string extraction — it picks the wrong strings and invents differences. Byte-compare constants and fragments (e.g. `FROM_WHERE`, sort/search fragments) between old and new locations, and confirm in code that the assembly order is the same. Print the source (file:line) with each extracted string to weed out false differences.
+     - **Report count differences separately**: same string with a different number of call sites usually means identical statements were merged into one function. Write it as "difference N from deduplication — `<statement>` merged into `<new function>`, old call sites → new call sites" and confirm call sites and order are unchanged. A statement that vanished rather than merged is a finding candidate.
+5. **DB and generated files** — hand-made generated files (`.sqlx/` etc. — regenerate with the tool and confirm no diff); **for schema-changing PRs (new migrations), run `prepare --check` yourself against a temp DB with those migrations applied** (generated from the old schema, the offline build passes but the real schema breaks); edits to applied migrations; migration numbers colliding with parallel PRs; big table locks (`NOT NULL`, type changes, index creation); production data assumptions ("must be 0 rows") added without a check; reversibility; generated file updates.
+6. **Test quality** — would the new tests still pass with the implementation reverted? Are there failure paths? Did deleted tests check only removed behavior, or were they guarding remaining behavior? Any weakened assertions?
+7. **Security and operations** — no secrets, tokens or personal data in logs, error messages or responses; missing authorization checks (other users' or partners' resources); input validation.
+8. **Guides** — CODE_STYLE and CLEAN_ARCHITECTURE violations. Flag **only when you can cite the rule**, and only in code this PR touched. Rules tagged `[fmt]`, `[lint: ..]` or `[order]` are caught by tools, so flag them only as verify failures; focus on untagged rules (review-only).
 
-## 3. 확인 — 의심을 증거로
+## 3. Confirm — turn suspicion into evidence
 
-지적 후보마다 다음 중 하나로 확인한다. 확인하지 못하면 "확인 필요" 질문으로 낮추거나 버린다.
+Confirm each candidate in one of these ways. If you cannot, downgrade it to a "needs confirmation" question or drop it.
 
-- 코드를 끝까지 따라가 실패 경로를 보인다(파일:줄).
-- 실패하는 테스트를 직접 써서 돌려 본다(리뷰용 — PR 브랜치에 커밋하지 않는다). 리뷰 워크트리 안에만 두고, 쓴 파일 경로를 적어 둔다(정리 때 그 워크트리의 변경이 이것뿐인지 확인한다). 지적의 근거로 쓴 테스트는 그 내용을 리뷰 본문에 옮긴다 — 워크트리와 함께 지워진다.
-- `verify` 명령을 돌려 결과를 PR 본문의 검증 결과와 대조한다(테스트 수 포함). `code_order` 가 있으면 `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <경로...>` 도 돌린다(1 이면 지적).
-- `grep` 결과로 남은 참조를 보인다.
+- Follow the code to the end and show the failure path (file:line).
+- Write and run a failing test yourself (for review only — never commit to the PR branch). Keep it inside the review worktree and record its path (cleanup checks that it is the worktree's only change). Copy any test used as evidence into the review body — it is deleted with the worktree.
+- Run the `verify` commands and compare with the PR body's verification results (including test counts). If `code_order` exists, also run `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <paths...>` (flag exit 1).
+- Show remaining references with `grep` output.
 
-## 4. 결과 정리
+## 4. Writing results
 
-심각도 — **영향**으로 정한다. 가이드 조항을 어겼다는 사실만으로 등급을 올리지 않는다:
+Severity is set by **impact**. Breaking a guide clause alone does not raise the level:
 
-| 등급 | 뜻 |
+| Level | Meaning |
 |---|---|
-| **차단** | 병합하면 버그·데이터 손상·보안 문제·계약 파손, 또는 이슈 완료 조건 미달 |
-| **중요** | 병합 전에 고치는 것이 맞음: 실패 경로가 테스트 없이 바뀜, 잔여 참조, **다른 PR·영역이 따라 할 기준이 흐려지는 위반**(문서와 코드가 다름, 계층 경계를 넘는 패턴의 첫 사례) |
-| **사소** | 고치면 좋음: 영향이 이 파일에 머무는 가이드 위반(예: repository 함수 하나에 쿼리 두 개), 이름, 주석, 작은 중복 |
-| **질문** | 의도를 확인해야 판단 가능, 또는 이 PR 범위 밖이지만 결정이 필요한 것 |
+| **Blocker** | merging causes a bug, data corruption, a security problem or a broken contract, or the issue's "done when" is not met |
+| **Major** | should be fixed before merging: a failure path changed without tests, leftover references, **a violation that blurs the standard other PRs or areas will copy** (docs and code disagree, first instance of a pattern crossing layer boundaries) |
+| **Minor** | nice to fix: a guide violation whose impact stays in this file (e.g. two queries in one repository function), naming, comments, small duplication |
+| **Question** | needs the intent to judge, or outside this PR's scope but needs a decision |
 
-지적 하나의 형식:
+Format of one finding:
 
 ```markdown
-### [차단] <한 줄 요약>
-- 위치: `path/to/file.rs:123`
-- 시나리오: <어떤 입력·상태·순서에서> → <무엇이 잘못되는가>
-- 근거: <코드 경로 / 실패 테스트 / 명령 출력>
-- 제안: <고치는 방향(코드 전체를 대신 쓰지 않는다)>
-- 권장: <처리 방식 하나> — <이유 한 줄>   ← 사소·질문에는 반드시, 차단·중요는 "이 PR 에서 고침"이 기본이라 생략 가능
+### [Blocker] <one-line summary>
+- Location: `path/to/file.rs:123`
+- Scenario: <with which input/state/order> → <what goes wrong>
+- Evidence: <code path / failing test / command output>
+- Suggestion: <direction of the fix (do not write the whole code)>
+- Recommendation: <one handling> — <one-line reason>   ← required for Minor and Question; may be omitted for Blocker/Major, where "fix in this PR" is the default
 ```
 
-**권장(처리 방식)** — 사소·질문 지적마다 아래 중 **하나**를 골라 이유와 함께 적는다. 메인(요청한) 세션이 이것을 보고 판단·처리하므로, 리뷰어가 가장 잘 아는 근거(영향 범위, 고치는 비용, 겹치는 후속 작업)를 이유에 담는다:
+**Recommendation (handling)** — for each Minor and Question finding pick **one** of these with a reason. The main (requesting) session decides from it, so put in the reason what the reviewer knows best (impact, cost of fixing, overlapping follow-up work):
 
-| 권장 | 언제 |
+| Recommendation | When |
 |---|---|
-| **이 PR 에서 고침** | 몇 줄이고 PR 범위 안이며, 지금 고치지 않으면 다음 PR 이 따라 할 때 |
-| **후속 이슈에 넣음 (#N)** | 이미 열린 후속 이슈(정리·계층·테스트 보강 등)와 성격이 같을 때 — 넣을 이슈 번호를 적는다. 맞는 이슈가 없으면 "새 이슈" 로 |
-| **기록만** | 고칠 것은 없고 알아 둘 것(PR 본문 숫자 오타, 이슈 문구, 의도된 동작 차이) — 어디에 기록할지(이슈 결정 기록·지적 모음 이슈) |
-| **고치지 않음** | 고치는 비용이 이득보다 크거나 가이드의 허용 범위 안일 때 — 이유 필수 |
-| **사용자 결정** | 제품 동작·문구·운영 데이터·정책처럼 코드만으로 정할 수 없을 때 — 선택지와 리뷰어의 추천을 함께 |
+| **Fix in this PR** | a few lines within the PR's scope, and the next PR would copy it if left |
+| **Add to follow-up issue (#N)** | same nature as an already open follow-up (cleanup, layering, more tests …) — give the issue number; "new issue" if none fits |
+| **Record only** | nothing to fix but worth knowing (typo in a PR body number, issue wording, an intended behavior difference) — say where to record it (issue decision log, findings collection issue) |
+| **Won't fix** | fixing costs more than it gains, or it is within the guide's allowance — reason required |
+| **User decision** | product behavior, wording, production data or policy that code alone cannot settle — give options and the reviewer's pick |
 
-리뷰 본문 맨 위에는 요약: 검토 기준 커밋(PR head·기본 브랜치), 이슈 완료 조건 충족 여부(조건별 ✅/❌/확인 못 함), 등급별 개수, 직접 돌린 명령과 결과(테스트 수 포함), 기계적 비교 결과, 그리고 **사소·질문 권장 표**(`| 지적 | 권장 | 이유 |` — 메인 세션이 한눈에 판단하도록).
+Top of the review body: a summary — reviewed commits (PR head, default branch), whether each "done when" item is met (✅/❌/not verified), counts per level, commands you ran and their results (with test counts), mechanical comparison results, and the **Minor/Question recommendation table** (`| finding | recommendation | reason |` — so the main session can decide at a glance).
 
-## 5. 올리기
+## 5. Posting
 
-- **올리기 직전에 병합 상태를 다시 본다**(`gh pr view <N> --json state,headRefOid`). 리뷰 중 병합됐거나 head 가 바뀌었으면 요약 맨 위에 적는다(바뀐 커밋은 다시 확인하거나 "확인 못 함").
-- **병합 후 리뷰**: "차단"은 "되돌리거나 바로 고쳐야 함"을 뜻한다. 지적은 이 PR 이 아니라 **후속 작업**으로 넘긴다 — 같은 영역의 다음 PR·하위 이슈에 반영할 것인지, 새 이슈가 필요한지 각 지적의 "권장"에 적는다(차단·중요도 이 경우엔 권장을 적는다).
-- **게시가 막히면**: 다른 세션의 지시로 일하는 리뷰 세션에서는 `gh pr review` 같은 외부 쓰기가 권한 판정에 막힐 수 있다. 우회하지 말고 **리뷰 본문 전체를 최종 보고 메시지 안에 그대로** 넣는다(파일 경로만 주지 않는다 — 다른 세션은 그 경로를 읽지 못할 수 있다). 요청한 세션이 그 본문으로 게시한다. 보고 첫 줄의 판정은 그대로 적는다.
-- 사용자가 PR 에 남기라고 했으면 본문을 임시 파일에 쓰고 `gh pr review <N> -R <repo> --comment --body-file <tmp>`. 특정 줄 지적이 꼭 필요하면 인라인 코멘트를 쓴다.
-- **승인(`--approve`)·변경 요청(`--request-changes`)·병합은 하지 않는다** — 판단은 사용자가 한다. 사용자가 명시적으로 요청할 때만.
-- 리뷰어는 코드를 고치지 않는다(독립성). 수정이 필요하면 지적으로 남기고, 사용자가 원하면 implement 세션에 넘긴다.
-- 지적이 없으면 "차단·중요 없음"과 확인한 범위를 그대로 적는다 — 확인하지 않은 영역을 확인했다고 쓰지 않는다.
-- PR 범위 밖에서 발견한 문제는 github-issue 스킬로 새 이슈를 제안한다.
-- 다른 세션의 요청으로 리뷰했으면 최종 보고에 **판정 + 사소·질문 권장 표**를 넣는다(리뷰 링크만 주지 않는다).
-- **리뷰를 올린 뒤(또는 최종 보고에 본문을 넣은 뒤) cleanup 스킬로 리뷰 환경을 정리한다**: 리뷰 워크트리 두 개, `-p <id>-review` 스택, 리뷰 중 켠 공유 컨테이너(멈춤), 비교 스크립트·임시 파일. 리뷰 워크트리의 커밋 안 된 변경은 리뷰용 테스트뿐이므로, `git -C <워크트리> status --short` 가 적어 둔 파일만 보여 주면 `git worktree remove --force` 로 지운다. 다른 파일이 바뀌어 있으면 지우지 않고 알린다. 수정 커밋을 다시 확인할 일이 남았으면(지적 "이 PR 에서 고침") 정리를 미루지 말고 지운다 — 다시 볼 때 같은 명령으로 새로 받는다.
+- **Check merge state again right before posting** (`gh pr view <N> --json state,headRefOid`). If it merged or the head changed during review, say so at the top of the summary (recheck the new commits or mark them "not verified").
+- **Post-merge review**: a Blocker means "revert or fix right away". Findings go to **follow-up work**, not this PR — in each finding's recommendation say whether it goes to the next PR or sub-issue in the same area or needs a new issue (in this case Blocker and Major get recommendations too).
+- **If posting is blocked**: in a review session working on another session's instructions, external writes like `gh pr review` may be blocked by permission checks. Do not work around it; put **the whole review body in the final report message** (not just a file path — the other session may not be able to read it). The requesting session posts it. Keep the verdict on the report's first line.
+- If the user asked to post on the PR, write the body to a temp file and run `gh pr review <N> -R <repo> --comment --body-file <tmp>`. Use inline comments only when a line-specific finding really needs one.
+- **Never approve (`--approve`), request changes (`--request-changes`) or merge** — the user decides. Only on explicit request.
+- The reviewer does not change code (independence). Leave needed fixes as findings; if the user wants, hand them to the implement session.
+- With no findings, state "no Blocker or Major" and the scope you checked — never claim areas you did not check.
+- For problems found outside the PR's scope, suggest new issues with the github-issue skill.
+- If you reviewed at another session's request, include **the verdict and the Minor/Question recommendation table** in the final report (not just a review link).
+- **After posting the review (or putting the body in the final report), clean up the review environment with the cleanup skill**: both review worktrees, the `-p <id>-review` stack, shared containers you started during review (stop them), comparison scripts and temp files. Uncommitted changes in a review worktree are only review tests, so if `git -C <worktree> status --short` shows only the files you recorded, remove it with `git worktree remove --force`. If other files changed, do not remove it; tell the user. Even if fix commits remain to be rechecked ("fix in this PR" findings), do not postpone — fetch fresh with the same commands when you look again.
 
-## 6. 메인(요청한) 세션 — 권장안 검토·처리
+## 6. Main (requesting) session — reviewing and acting on recommendations
 
-리뷰를 맡긴 세션(오케스트레이션·사용자와 대화하는 세션)은 권장을 그대로 따르지 않고 **검토해서 정한 뒤 처리**한다. 리뷰어는 이 단계를 하지 않는다.
+The session that requested the review (orchestrating or talking with the user) does not follow recommendations blindly; it **reviews, decides, then acts**. The reviewer does not do this step.
 
-1. **검토** — 지적마다 근거(위치·명령 출력)가 맞는지 필요한 만큼 직접 확인한다. 권장이 저장소의 진행 계획(열린 후속 이슈, 사용자 결정, 순서)과 맞는지 본다 — 리뷰어는 그 계획을 다 모를 수 있다.
-2. **판단** — 권장을 받아들이거나 바꾼다. 바꾸면 이유를 남긴다. 병합 여부는 차단·중요 지적으로 정하고, 사소·질문만 남았으면 병합을 멈추지 않는다(사용자가 다르게 정하지 않았으면).
-3. **처리**
-   - **이 PR 에서 고침** → 구현 세션(또는 직접)에 고치게 한 뒤 바뀐 부분만 다시 확인하고 병합.
-   - **후속 이슈에 넣음** → 그 이슈의 대상·작업 내용에 항목을 더한다(리뷰 링크 포함). 새 이슈가 필요하면 github-issue 스킬로.
-   - **기록만** → 지적 모음 이슈나 해당 이슈의 결정 기록에 한 줄.
-   - **고치지 않음** → 지적 모음 이슈에 이유와 함께 닫힌 항목으로 남긴다.
-   - **사용자 결정** → 혼자 정하지 않는다. 지적 모음 이슈의 "사용자 검토 필요"에 선택지·추천과 함께 올리고, 사용자에게 보고할 때 따로 묻는다. 그동안 다른 처리는 계속한다.
-4. **보고** — 사용자에게는 판정, 병합 여부, 처리 결과를 짧게 알리고 **사용자 결정으로 올린 것만** 따로 묻는다.
+1. **Review** — check each finding's evidence (location, command output) as far as needed. Check the recommendation fits the repo's plan (open follow-up issues, user decisions, order) — the reviewer may not know all of it.
+2. **Decide** — accept or change each recommendation; leave a reason when changing. Decide merging by Blocker and Major findings; if only Minor and Question remain, do not hold the merge (unless the user decided otherwise).
+3. **Act**
+   - **Fix in this PR** → have the implementing session (or yourself) fix it, recheck only the changed part, then merge.
+   - **Add to follow-up issue** → add the item to that issue's Target and Work (with the review link). Use the github-issue skill if a new issue is needed.
+   - **Record only** → one line in the findings collection issue or the relevant issue's decision log.
+   - **Won't fix** → record it with the reason as a closed item in the findings collection issue.
+   - **User decision** → never decide alone. Put it in the findings collection issue's "Needs user review" with options and a recommendation, and ask separately when reporting to the user. Keep handling the rest meanwhile.
+4. **Report** — tell the user the verdict, whether it merged and what was done, briefly, and ask separately **only about what went to user decision**.
 
-<!-- 초안 TODO
-- 저장소별 리뷰 체크리스트(.claude/github-issue.yml 의 review 키 등)를 둘지
-- 인라인 코멘트 vs 본문 하나 — 사용자 선호 확정(첫 시험(SosinCommerce-BE PR #31)은 본문 하나로 충분했음)
+<!-- Draft TODO
+- Whether to have per-repo review checklists (e.g. a `review` key in .claude/github-issue.yml)
+- Inline comments vs one body — confirm user preference (the first trial, SosinCommerce-BE PR #31, was fine with one body)
 -->

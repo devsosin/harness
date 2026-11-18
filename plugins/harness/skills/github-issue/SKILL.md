@@ -1,83 +1,85 @@
 ---
 name: github-issue
-description: 어느 저장소에서든 작업·버그·결정 사항을 GitHub 이슈로 같은 형식(개요·사용자 검토 필요·대상·현재 상태·작업 내용·완료 조건·결정 기록)으로 만들고 갱신·닫는 방법. 저장소마다 `.claude/github-issue.yml` 에 라벨·ID 접두어·언어를 두고, 없으면 처음 한 번 사용자에게 확인해 만든다. 사용자가 "이슈 만들어/작성해/올려줘", "ISSUE 로 남겨", "이슈 정리", "작업 계획을 이슈로", "OPEN_ISSUES/TODO 파일에 기록" 같은 말을 하거나, 조사·리뷰 중 나중에 할 작업·보류 결정·사용자가 확인할 것이 생겼을 때 이 스킬을 쓴다. 이슈 파일(OPEN_ISSUES.md 등)에 적으려 할 때도 대신 이 스킬을 따른다. 이슈를 닫거나(PR 병합·결정) 결정·확인 결과를 덧붙일 때, 라벨 체계를 정하거나 바꿀 때도 쓴다.
+description: 작업·버그·결정 사항을 어느 저장소에서든 같은 형식(개요·사용자 검토 필요·대상·현재 상태·작업 내용·완료 조건·결정 기록)의 GitHub 이슈로 만들고 갱신·닫는다. 설정은 `.claude/github-issue.yml`. 사용자가 "이슈 만들어/작성해/올려줘", "ISSUE 로 남겨", "이슈 정리", "작업 계획을 이슈로", "OPEN_ISSUES/TODO 에 기록" 이라고 하거나, 나중에 할 작업·보류 결정·확인할 것이 생겼을 때, 이슈를 닫거나 결정을 덧붙일 때, 라벨 체계를 정할 때 쓴다.
 ---
 
-# GitHub 이슈 작성
+# GitHub issues
 
-이슈의 독자는 **나중에 이 작업을 검토하거나 이어받는 사람**(대개 사용자 본인, 또는 새 세션의 Claude)이다. 이슈 하나만 읽고도 무엇을 왜 하는지, 사용자가 무엇을 정해야 하는지, 어느 파일을 보면 되는지 알 수 있어야 한다. 그래서 검토할 것과 대상 파일이 맨 위에서 바로 보이게 쓴다.
+The reader of an issue is **whoever later reviews or picks up the work** (usually the user, or Claude in a new session). From the issue alone they must know what is done and why, what the user has to decide, and which files to open. So the review items and target files go at the top.
 
-저장소마다 다른 것(라벨, ID 접두어, 언어, 빌드·검증 방법)은 그 저장소의 설정 파일에 두고, 이 스킬은 공통 절차만 정한다.
+Per-repo details (labels, ID prefix, language, build and verify commands) live in that repo's config file; this skill only defines the common procedure.
 
-## 1. 저장소와 설정
+Output language: issue titles, bodies and comments follow the config's `language` (if missing, the language of the repo docs/README, else the user's language).
 
-1. **저장소** — 작업 대상 코드가 있는 저장소. 그 폴더에서 `git remote get-url origin` 으로 `owner/repo` 를 얻는다. 한 워크스페이스에 여러 저장소를 클론해 쓰면 대상 파일이 속한 저장소에 만든다.
-   - 작업이 다른 저장소도 고치면(예: 라이브러리 변경 + 그것을 쓰는 앱 대응) 주 작업 저장소에 이슈를 만들고, **고칠 다른 저장소에도 그쪽 작업 이슈를 만들어** 서로 연결한다. 각 이슈의 "대상"에 상대 저장소의 파일과 그 이슈(`owner/repo#N`)를 적는다. 그 저장소의 설정 파일(§1.2)을 따로 따른다.
-2. **설정 파일** — 그 저장소 루트의 `.claude/github-issue.yml`. 형식은 [references/config.md](references/config.md). 있으면 읽고 따른다.
-3. **설정이 없으면(처음 쓰는 저장소)** — 이슈를 만들기 전에 한 번만 설정을 정한다. 라벨은 저장소에 오래 남고 다른 사람도 보므로 사용자 확인 없이 정하지 않는다.
-   - 현재 라벨을 본다: `gh label list -R <repo> --limit 100`
-   - 저장소 구조(최상위 폴더, 모듈, 기존 문서의 이슈 ID)를 보고 영역 라벨과 ID 접두어 후보를 만든다.
-   - 사용자에게 한 번에 묻는다: 영역 라벨(예: 스토어·모듈별), 검토 필요·보류 라벨을 쓸지, ID 접두어, 이슈 언어. 권장안을 함께 제시한다. 기본 라벨(bug·enhancement·documentation)만 쓰겠다고 하면 그대로 기록한다.
-   - 답을 [references/config.md](references/config.md) 형식으로 `<repo>/.claude/github-issue.yml` 에 쓰고, 없는 라벨을 만든다(`gh label create <name> -R <repo> --color <hex> --description "<설명>" --force`). 설정 파일은 그 저장소에 커밋해야 다음 세션·다른 사람도 같은 규칙을 쓴다 — 커밋은 사용자에게 알리고 요청이 있을 때 한다.
+## 1. Repo and config
 
-## 2. 중복 확인과 ID
+1. **Repo** — the repo that holds the target code. Get `owner/repo` with `git remote get-url origin` in that folder. In a workspace with several cloned repos, create the issue in the repo that owns the target files.
+   - If the work also changes another repo (e.g. a library change plus the app that uses it), create the issue in the main repo **and an issue for that repo's part in the other repo**, and link them. Each issue's "Target" lists the other repo's files and its issue (`owner/repo#N`). Follow that repo's own config (§1.2).
+2. **Config** — `.claude/github-issue.yml` at that repo's root; format in [references/config.md](references/config.md). Read and follow it if present.
+3. **No config (first use in a repo)** — settle the config once before creating issues. Labels stay in the repo for a long time and others see them, so never decide them without the user.
+   - See current labels: `gh label list -R <repo> --limit 100`
+   - From the repo structure (top-level folders, modules, issue IDs in existing docs), draft area labels and ID prefix candidates.
+   - Ask the user in one go: area labels (e.g. per store or module), whether to use review and on-hold labels, ID prefix, issue language. Offer a recommendation. If they want only the default labels (bug, enhancement, documentation), record exactly that.
+   - Write the answers to `<repo>/.claude/github-issue.yml` in the [references/config.md](references/config.md) format and create missing labels (`gh label create <name> -R <repo> --color <hex> --description "<desc>" --force`). The config must be committed to the repo so later sessions and other people use the same rules — tell the user and commit when asked.
+
+## 2. Duplicates and IDs
 
 ```bash
-gh issue list -R <repo> --state all --search "<핵심 단어>" --limit 20
+gh issue list -R <repo> --state all --search "<keywords>" --limit 20
 ```
 
-비슷한 이슈가 있으면 새로 만들지 말고 그 이슈에 댓글로 덧붙인다(결정·확인 결과는 본문 "결정 기록"도 갱신).
+If a similar issue exists, comment on it instead of creating a new one (for decisions and findings, also update its "Decision log").
 
-제목은 설정의 `title_format`(기본 `[ID] 한 줄 요약`)을 따른다. ID 는 `접두어-번호`(예: `AUTH-003`). 문서·커밋·PR 에서 이 ID 로 서로를 부르므로 한 번 정한 번호는 바꾸지 않는다. 다음 번호는 같은 접두어의 기존 제목에서 찾는다:
+The title follows the config's `title_format` (default `[ID] one-line summary`). The ID is `PREFIX-number` (e.g. `AUTH-003`). Docs, commits and PRs refer to each other by this ID, so never renumber. Find the next number from existing titles with the same prefix:
 
 ```bash
 gh issue list -R <repo> --state all --search "AUTH- in:title" --limit 200 --json title -q '.[].title'
 ```
 
-설정의 `id_prefixes` 에 맞는 것이 없으면 짧은 대문자 접두어를 새로 쓰고, 설정 파일 목록에도 더한다(사용자에게 알린다). 설정에서 ID 를 쓰지 않기로 했으면(`id_prefixes: []`) 제목은 요약만 쓴다.
+If no prefix in `id_prefixes` fits, use a new short uppercase prefix and add it to the config (tell the user). If the config disables IDs (`id_prefixes: []`), the title is the summary only.
 
-## 3. 본문 쓰기
+## 3. Writing the body
 
-저장소에 `.github/ISSUE_TEMPLATE/` 이나 설정의 `template` 경로가 있으면 그것을, 없으면 [assets/issue-template.md](assets/issue-template.md) 의 구조를 쓴다. 섹션별 요령:
+Use `.github/ISSUE_TEMPLATE/` or the config's `template` path if present, otherwise the structure of [assets/issue-template.md](assets/issue-template.md). The section names below are English glosses of the template headings (개요, 사용자 검토 필요, 대상, 선후관계, 현재 상태, 작업 내용, 완료 조건, 결정 기록) — in the issue, use the headings in the output language. Per section:
 
-- **개요** — 무엇을 왜 하는지 2~4문장. 증상·근거(로그 한 줄, 공식 문서 문장, 사용자 요청)를 함께.
-- **사용자 검토 필요** — 사용자가 정하거나 확인해야 할 것을 체크리스트로. 각 항목에 선택지와 권장안을 적는다(예: "단일 처리 API 사용 여부 — 권장: 쓰지 않음(처리 경로 하나로 유지)"). 실서비스 확인(실계정, 운영 로그)이 필요하면 여기 적는다. 없으면 "없음". 이 섹션이 이슈를 만드는 가장 큰 이유이므로 비우지 말고 진지하게 찾는다.
-- **대상** — 이 이슈가 등록되는 저장소는 적지 않는다(이미 그 저장소의 이슈다). **바뀌거나 영향받는 파일·폴더**(백틱)와 그 안의 함수·타입, 무엇이 바뀌는지를 적는 데 집중한다. 추측으로 쓰지 말고 코드를 열어 확인한 경로만 적는다. 다른 저장소도 고치면 그때만 `owner/repo` 와 그쪽 파일, 그 저장소에 등록한 이슈(`owner/repo#N`)를 함께 적는다. 관련 이슈·PR 은 마지막 줄에(`#N`, 다른 저장소는 `owner/repo#N`).
-- **선후관계** — 이 이슈보다 먼저 병합돼야 하는 이슈(`선행: #N` + 이유)와 동시에 진행해도 되는 이슈(`병렬 가능`). implement 스킬은 선행 이슈가 닫히지 않으면 시작하지 않는다. 선행이 되는 경우: 같은 파일의 같은 부분, 앞 이슈의 결과(기준선·테스트 환경·지워질 코드)를 전제, 같은 마이그레이션 번호·버전 문서. 여러 이슈를 한꺼번에 만들면 다 만든 뒤 서로의 선후관계를 채운다. 없으면 "없음".
-- **현재 상태** — 지금 동작과 근거(파일:줄, 실제 응답). 개인정보·계정·토큰·쿠폰/주문 번호 같은 값은 지우거나 바꿔서 적는다.
-- **작업 내용** — 할 일을 순서대로 체크리스트로. 설계안이 있으면 짧은 코드 블록.
-- **완료 조건** — 테스트·검증 명령과 확인할 동작. 설정의 `verify` 가 있으면 그 명령을 쓴다.
-- **결정 기록** — `| 날짜 | 결정 |` 표. 사용자가 정한 것만, 날짜(YYYY-MM-DD)와 함께.
+- **Overview** — what and why in 2–4 sentences, with the symptom or evidence (a log line, an official doc sentence, the user's request).
+- **Needs user review** — a checklist of what the user must decide or confirm. Each item has the options and a recommendation (e.g. "Use the single-item API — recommended: no (keep one processing path)"). Checks that need production (real accounts, production logs) go here. If none, write "None". This section is the main reason the issue exists, so look hard before leaving it empty.
+- **Target** — do not name the repo the issue lives in. Focus on **files and folders that change or are affected** (in backticks), the functions and types inside, and what changes. Only list paths you opened and confirmed. Name `owner/repo`, its files and its issue (`owner/repo#N`) only when another repo also changes. Related issues and PRs on the last line (`#N`, `owner/repo#N` for other repos).
+- **Order** — issues that must merge first (`Prerequisite: #N` + reason) and issues that may run at the same time (`Parallel OK`). The implement skill does not start while a prerequisite is open. Something is a prerequisite when it touches the same part of the same file, when this issue assumes its result (baseline, test environment, removed code), or when both use the same migration number or versioned doc. When creating several issues at once, fill in their order after all exist. If none, write "None".
+- **Current state** — current behavior and evidence (file:line, real responses). Remove or replace personal data, accounts, tokens, coupon or order numbers.
+- **Work** — the steps in order, as a checklist. A short code block if there is a design.
+- **Done when** — test and verify commands and the behavior to check. Use the config's `verify` if present.
+- **Decision log** — a `| date | decision |` table. Only what the user decided, with the date (YYYY-MM-DD).
 
-본문 언어는 설정의 `language`(없으면 저장소 문서·README 의 언어). 코드 식별자·경로·엔드포인트·ID·설정 키는 번역하지 않는다. 비밀값·`.env` 값은 쓰지 않는다(키 이름만). 공개 저장소면 내부 정보(사내 URL, 계정, 고객 데이터)를 더 조심한다.
+Write section headings and text in the output language above. Never translate code identifiers, paths, endpoints, IDs or config keys. Never write secrets or `.env` values (key names only). Be extra careful with internal information (internal URLs, accounts, customer data) in public repos.
 
-## 4. 라벨
+## 4. Labels
 
-설정의 `labels` 를 따른다. 일반 규칙:
+Follow the config's `labels`. General rules:
 
-- 종류 라벨(`labels.type`, 기본 `bug`·`enhancement`·`documentation`) 중 하나. 리팩토링은 `enhancement`.
-- 영역 라벨(`labels.areas`)은 각 항목의 `when` 에 맞으면 붙인다(여럿 가능).
-- `labels.review`(예: `needs-review`)는 "사용자 검토 필요"에 열린 항목이 있을 때 붙이고, 사용자가 다 정하면 뗀다.
-- `labels.on_hold`(예: `status:on-hold`)는 사용자가 보류하기로 한 이슈.
-- 설정에 없는 라벨을 새로 만들지 않는다. 필요하면 사용자에게 묻고 설정에 더한 뒤 만든다.
+- One type label (`labels.type`, default `bug`, `enhancement`, `documentation`). Refactoring is `enhancement`.
+- Area labels (`labels.areas`) when their `when` matches (several allowed).
+- `labels.review` (e.g. `needs-review`) while "Needs user review" has open items; remove it once the user has decided all of them.
+- `labels.on_hold` (e.g. `status:on-hold`) for issues the user put on hold.
+- Never create labels outside the config. If one is needed, ask the user, add it to the config, then create it.
 
-## 5. 만들기
+## 5. Creating
 
-사용자가 이슈를 만들라고 했으면 바로 만든다. 계획을 세우는 중이라 내용이 확정되지 않았으면 초안을 보여 주고 확인받은 뒤 만든다. 여러 개를 한꺼번에 옮길 때(예: 이슈 파일 이관)도 같은 형식으로 하나씩 만들고, 상호 참조는 다 만든 뒤 `#번호` 로 바꾼다.
+If the user asked for an issue, create it right away. If the plan is still forming and the content is not settled, show a draft and create it after confirmation. When migrating many at once (e.g. from an issue file), create them one by one in the same format and replace cross-references with `#number` after all exist.
 
-본문은 임시 파일(세션 scratchpad)에 쓰고 `--body-file` 로 넘긴다 — 셸 따옴표 문제를 피한다.
+Write the body to a temp file (the session scratchpad) and pass `--body-file` — it avoids shell quoting problems.
 
 ```bash
-gh issue create -R <repo> --title "[ID] 요약" --body-file <tmp>/issue.md --label enhancement --label <area>
+gh issue create -R <repo> --title "[ID] summary" --body-file <tmp>/issue.md --label enhancement --label <area>
 ```
 
-만든 뒤 사용자에게 링크(`[owner/repo#N](URL)`)와 검토할 항목을 한두 줄로 알린다.
+Afterwards tell the user the link (`[owner/repo#N](URL)`) and the review items in a line or two.
 
-## 6. 갱신·닫기
+## 6. Updating and closing
 
-- 사용자 결정·확인 결과가 생기면 댓글로 남기고, 본문의 "사용자 검토 필요" 체크와 "결정 기록"도 고친다(`gh issue edit -R <repo> <N> --body-file …`).
-- 작업 PR 본문에 `Closes #N`(다른 저장소면 `Closes owner/repo#N`)을 넣어 병합 때 닫히게 한다.
-- 선후관계가 바뀌면(선행 이슈가 나뉘거나 순서가 바뀜) 양쪽 이슈의 "선후관계"를 함께 고친다.
-- 결정으로 끝나거나(하지 않기로 함) 따로 닫을 때는 이유를 댓글로 남기고 닫는다: `gh issue close -R <repo> <N> --reason completed|"not planned" --comment "…"`.
-- 보류는 닫지 않고 보류 라벨을 붙이고 보류 사유·재개 조건을 결정 기록에 쓴다.
-- 저장소에 예전 이슈 파일(OPEN_ISSUES.md 등)이 있으면 새 이슈를 그 파일에 쓰지 않는다. 설정의 `index_file` 이 있으면 그 표에 ID·GitHub 링크 한 줄만 더한다.
+- When the user decides or confirms something, comment it and also update the body's "Needs user review" checkboxes and "Decision log" (`gh issue edit -R <repo> <N> --body-file …`).
+- Put `Closes #N` (`Closes owner/repo#N` for another repo) in the work PR body so the merge closes it.
+- When the order changes (a prerequisite is split or reordered), update "Order" in both issues.
+- When it ends by decision (won't do) or is closed separately, comment the reason and close: `gh issue close -R <repo> <N> --reason completed|"not planned" --comment "…"`.
+- On hold: do not close; add the on-hold label and write the reason and resume condition in the decision log.
+- If the repo has an old issue file (OPEN_ISSUES.md etc.), do not write new issues there. If the config has `index_file`, add only one line (ID and GitHub link) to its table.

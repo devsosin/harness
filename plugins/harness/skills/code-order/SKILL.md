@@ -1,33 +1,35 @@
 ---
 name: code-order
-description: 파일 안 코드(최상위 항목) 순서를 언어별 규칙대로 확인·정렬한다 — Rust 는 mod → use(std / 외부 / crate / pub use) → const → 타입별(정의 → impl → 그 impl 이 쓰는 함수) → 테스트. 사용자가 "코드 순서 맞춰/정렬해", "파일 안 순서 정리", "item order 확인", "impl 을 struct 옆으로" 라고 하거나, 리팩토링·파일 분리 뒤 순서가 섞였을 때, PR 전 정리할 때 쓴다.
+description: 파일 안 최상위 항목 순서를 언어별 규칙(Rust: mod → use → const → 타입별 정의·impl·그 impl 이 쓰는 함수 → 테스트)대로 확인·정렬한다. 사용자가 "코드 순서 맞춰/정렬해", "파일 안 순서 정리", "item order 확인", "impl 을 struct 옆으로" 라고 하거나, 리팩토링·파일 분리 뒤 순서가 섞였을 때, PR 전 정리할 때 쓴다.
 ---
 
-# 코드 순서
+# Code order
 
-규칙은 언어 가이드 `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md` 의 "Item order" 절. 스크립트는 항목을 통째로 옮기기만 하고 내용은 바꾸지 않는다(같은 글자만 있는지 스스로 검사). 지금은 Rust 만 있다: `scripts/rust.mjs`(Node 18+, 의존성 없음).
+The rules are the "Item order" section of `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`. The script only moves whole items and never changes their text (it checks that the same characters remain). Only Rust exists for now: `scripts/rust.mjs` (Node 18+, no dependencies).
 
-## 1. 확인
-저장소 `.claude/github-issue.yml` 의 `code_order`(언어 → 경로)가 있으면 그 경로를 쓴다. implement·github-pr·pr-reviewer 도 같은 설정으로 이 확인을 돌린다.
+Output language: reports to the user follow the user's language.
+
+## 1. Check
+If the repo's `.claude/github-issue.yml` has `code_order` (language → paths), use those paths. implement, github-pr and pr-reviewer run the same check from the same setting.
 ```bash
 node ${CLAUDE_SKILL_DIR}/scripts/rust.mjs src examples tests
 ```
-- 종료 코드: 0 = 모두 순서대로, 1 = 옮길 파일 있음(목록 출력), 2 = 읽지 못한 파일 있음(`skipped: 파일: 이유`).
-- `skipped` 는 스크립트가 모르는 최상위 문법이다. 추측해 옮기지 않으므로 그 파일은 손으로 보거나 스크립트를 고친다.
+- Exit code: 0 = all in order, 1 = files to reorder (listed), 2 = unreadable files (`skipped: file: reason`).
+- `skipped` means top-level syntax the script does not know. It never guesses, so check that file by hand or fix the script.
 
-## 2. 정렬
+## 2. Reorder
 ```bash
 node ${CLAUDE_SKILL_DIR}/scripts/rust.mjs --write src examples tests
 cargo fmt
-node ${CLAUDE_SKILL_DIR}/scripts/rust.mjs src examples tests   # 0 이어야 한다
+node ${CLAUDE_SKILL_DIR}/scripts/rust.mjs src examples tests   # must be 0
 ```
-- 작업 트리가 깨끗할 때 돌리고, **순서 정렬만 커밋 하나**로 둔다(`style: reorder items (<이슈 ID>)`). 기능 변경과 섞지 않는다 — 리뷰어가 "옮기기만 했다"를 diff 로 확인할 수 있어야 한다.
-- 저장소 검증(`verify`: 빌드·테스트)을 다시 돌린다. 경고 수가 전과 같은지도 본다.
-- **컴파일이 순서보다 우선이다.** 정렬 뒤 빌드가 깨지면 그 파일만 손으로 되돌려 예외로 두지 말고 스크립트 규칙을 고친다(테스트 포함). 매크로처럼 위치가 의미를 갖는 항목이 흔한 원인이다. `macro_rules!` 는 정의 아래에서만 보인다.
-- `git diff --stat` 으로 범위를 보고, 크게 옮겨진 파일 몇 개는 diff 를 직접 읽는다. 주석이 엉뚱한 항목에 붙었으면 손으로 고친다.
-- 구역 주석(빈 줄이 뒤따르는 일반 주석, 예: `// ---------- 통신사 ----------`)은 제자리에 두고 그 구역 안에서만 정렬한다. 항목 바로 위에 붙은 주석(빈 줄 없음)은 그 항목과 함께 옮겨진다. 구역 주석 뒤에 빈 줄이 없으면 항목 주석으로 보므로, 정렬 전에 빈 줄을 넣는다.
+- Run on a clean working tree and keep **the reorder alone in one commit** (`style: reorder items (<issue ID>)`). Never mix it with behavior changes — the reviewer must be able to see "moves only" in the diff.
+- Re-run the repo's `verify` (build, tests). Check the warning count is unchanged.
+- **Compiling beats ordering.** If the build breaks after reordering, do not hand-revert that file as an exception; fix the script's rules (with tests). Position-sensitive items such as macros are the usual cause — `macro_rules!` is only visible below its definition.
+- Look at the scope with `git diff --stat` and read the diff of a few heavily moved files. Fix by hand any comment that landed on the wrong item.
+- Section comments (a plain comment followed by a blank line, e.g. `// ---------- carriers ----------`) stay in place; sorting happens only inside each section. A comment directly above an item (no blank line) moves with that item. A section comment without a following blank line is treated as an item comment, so add the blank line before sorting.
 
-## 3. 판단이 필요한 경우
-- 한 파일에 타입이 여럿이고 서로 무관하면 순서보다 파일 분리가 맞다(`CLEAN_ARCHITECTURE.md` 의 나누는 규칙). 구역 주석이 여럿인 파일도 구역별 파일 분리를 먼저 본다.
-- 여러 타입이 쓰는 함수는 처음 쓰는 타입 뒤에 놓인다. 공용이면 별도 파일로 빼는 것을 제안한다.
-- 스크립트 테스트: `node --test ${CLAUDE_SKILL_DIR}/scripts/rust.test.mjs`. 규칙을 바꾸면 테스트도 같이 바꾼다.
+## 3. Judgment calls
+- A file with several unrelated types needs splitting more than ordering (split rules in `CLEAN_ARCHITECTURE.md`). A file with several section comments: consider splitting by section first.
+- A function used by several types goes after the first type that uses it. If it is shared, suggest moving it to its own file.
+- Script tests: `node --test ${CLAUDE_SKILL_DIR}/scripts/rust.test.mjs`. Change the tests together with the rules.

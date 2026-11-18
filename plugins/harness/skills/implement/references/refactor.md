@@ -1,24 +1,24 @@
-# 리팩토링·레거시 제거
+# Refactoring and legacy removal
 
-## 리팩토링(구조 변경) — 동작을 바꾸지 않는다
+## Refactoring (structure change) — behavior stays the same
 
-공통 가이드(CLEAN_ARCHITECTURE §6): 구조만 바꾸는 PR 은 **같은 테스트가 같은 수로 통과**하고, 지원하는 기능 조합이 모두 빌드된다.
+Common guide (CLEAN_ARCHITECTURE §6): a structure-only PR passes **the same tests, same count**, and every supported feature combination builds.
 
-1. **덮개 확인** — 옮기거나 바꿀 코드가 테스트로 덮여 있는지 본다. 덮이지 않은 동작(특히 API 응답 모양, 오류 코드, DB 결과)이 있으면 **바꾸기 전에** 현재 동작을 고정하는 검사를 넣는다 — 새 테스트를 만들어도 되고, 그 동작을 이미 실행하는 기존 테스트에 확인 줄(예: `assert_eq!(body["provider"], "aligo")`)을 더해도 된다. 어느 쪽이든 **바꾸기 전 코드에서 통과**하는 것을 확인하고 따로 커밋한 뒤 리팩토링한다. 리팩토링이 끝난 뒤에도 그대로 통과해야 한다. PR 에는 새로 고정한 동작을 나열한다.
-2. **작게 옮기기** — 한 번에 한 책임(모듈 하나, 타입 하나)씩 옮기고 매번 테스트를 돌린다. 이동과 수정을 같은 커밋에 섞지 않는다(리뷰어가 "옮기기만 했는지"를 diff 로 확인할 수 있게).
-3. **테스트도 함께 이동** — 코드와 같이 옮긴다. 테스트를 지우거나 단언을 약하게 바꾸지 않는다. 바꿔야 한다면 이유를 커밋 메시지와 PR 에 적는다.
-4. **직렬화 값 고정** — 문자열을 enum 으로 바꿀 때 API·DB 에 나가는 값이 바뀌지 않는지 테스트한다(serde 이름, DB 매핑).
-5. **검증 기준** — 기준선과 테스트 이름·수가 같다(추가한 characterization 테스트만큼 늘어남). 파일이 ~250줄을 넘게 남으면 PR 에 이유를 적는다.
+1. **Check coverage** — is the code you will move or change covered by tests? For uncovered behavior (especially API response shape, error codes, DB results), add a check that pins current behavior **before changing it** — a new test, or an assertion line on an existing test that already runs it (e.g. `assert_eq!(body["provider"], "aligo")`). Either way, confirm it **passes on the code before the change**, commit it separately, then refactor. It must still pass afterwards. List the newly pinned behaviors in the PR.
+2. **Move in small steps** — one responsibility (one module, one type) at a time, running tests each time. Never mix moves and edits in one commit (so the reviewer can confirm "moved only" in the diff).
+3. **Move tests along** — tests move with their code. Do not delete tests or weaken assertions. If one must change, give the reason in the commit message and the PR.
+4. **Pin serialized values** — when turning strings into enums, test that values going to the API and DB do not change (serde names, DB mapping).
+5. **Verification bar** — same test names and count as the baseline (plus the characterization tests you added). If a file stays over ~250 lines, explain why in the PR.
 
-## 레거시 제거 — 없애는 동작만 없앤다
+## Legacy removal — remove only what is being removed
 
-1. **참조 전부 찾기** — 지울 심볼·경로·컬럼·환경변수·설정 키를 저장소 전체에서 찾는다(`grep -rn`, 코드·테스트·마이그레이션·점검 스크립트·문서·Docker·CI). 이슈의 "대상" 목록은 출발점일 뿐 전부가 아닐 수 있다.
-2. **다른 저장소 영향** — 지우는 것이 API 응답 필드·경로라면 그것을 읽는 클라이언트(이슈의 관련 이슈·다른 저장소)를 확인한다. 이슈에 배포 순서가 있으면 PR "참고"에 적는다.
-3. **테스트**
-   - 지운 동작을 검사하던 테스트는 지운다 — PR 에 지운 테스트 이름을 나열한다(리뷰어가 의도한 삭제인지 대조).
-   - 없어졌음을 증명하는 테스트를 추가한다(예: 지운 경로 → 404, 응답에 필드 없음).
-   - 남는 동작(공유 코드)을 검사하는 테스트는 그대로 통과해야 한다.
-4. **DB** — 컬럼·제약 삭제는 저장소의 마이그레이션 규칙대로 새 파일로. 코드가 컬럼을 더 이상 읽고 쓰지 않게 바꾼 뒤에 삭제한다(배포 중 이전 버전이 돌 수 있다). 운영 데이터 조건(예: "0건 확인 후")이 있으면 마이그레이션에 확인 쿼리를 넣거나 이슈의 사용자 확인 항목으로 남긴다.
-5. **의존성** — 쓰지 않게 된 라이브러리·빌드 설정(예: `Cargo.toml` 의존성, 프로필)을 지우고 lock 파일을 갱신한다.
-6. **문서** — README·계획 문서·주석에서 지운 것을 설명하는 부분을 고치고, 계획 문서에 변경 이력이 있으면 한 줄 남긴다.
-7. **검증 기준** — 기준선 대비 줄어든 테스트 = 의도적으로 지운 테스트, 늘어난 테스트 = 제거 확인 테스트. 지운 심볼을 `grep` 했을 때 남은 곳이 없다(의도한 곳 제외).
+1. **Find every reference** — search the whole repo for the symbols, paths, columns, env vars and config keys being removed (`grep -rn` over code, tests, migrations, check scripts, docs, Docker, CI). The issue's "Target" list is a starting point and may not be complete.
+2. **Impact on other repos** — if you remove API response fields or paths, check the clients that read them (the issue's related issues, other repos). If the issue has a deploy order, note it in the PR's "Notes".
+3. **Tests**
+   - Delete tests that checked the removed behavior — list their names in the PR (so the reviewer can confirm each deletion was intended).
+   - Add tests proving it is gone (e.g. removed path → 404, field absent from response).
+   - Tests of remaining behavior (shared code) must still pass.
+4. **DB** — drop columns and constraints in a new migration file per the repo's rules. Drop only after the code no longer reads or writes the column (an older version may still run during deploy). If there is a production data condition (e.g. "after confirming 0 rows"), put a check query in the migration or leave it as a user review item on the issue.
+5. **Dependencies** — remove libraries and build settings no longer used (e.g. `Cargo.toml` dependencies, profiles) and update the lock file.
+6. **Docs** — fix the parts of the README, plan docs and comments that describe what was removed; if a plan doc has a change log, add a line.
+7. **Verification bar** — tests fewer than the baseline = tests deliberately deleted; tests added = removal checks. `grep` for the removed symbols finds nothing left (except intended places).

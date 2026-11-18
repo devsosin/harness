@@ -1,148 +1,150 @@
 ---
 name: implement
-description: GitHub 이슈를 받아 구현하는 공통 절차 — 이슈·선행 이슈·결정 확인 → 테스트 환경 확인 → 이슈 기반 테스트 작성 → 구현 → 테스트 검증 → github-pr 스킬로 PR 까지. 신규 기능(테스트 먼저, 실패 확인 후 구현)과 리팩토링·레거시 제거(동작 보존, 테스트 수 비교)를 나눠 진행하고, 여러 이슈를 맡으면 선후관계로 직렬·병렬을 나눈다. 언어별 규칙은 harness 의 docs/<lang>/CODE_STYLE.md·CLEAN_ARCHITECTURE.md, 프론트엔드는 frontend 스킬을 따른다. 사용자가 "이슈 #N 구현해/작업해/진행해", "이 이슈 처리해줘", "owner/repo#N 해결", "ISSUE-ID 작업 시작", "#5~#8 진행해", 이슈 링크만 주고 "이거 해줘" 라고 할 때, 새 세션에서 이슈를 넘겨받아 코드를 고쳐야 할 때 이 스킬을 쓴다. 이슈 없이 코드를 크게 바꾸려 할 때도 먼저 github-issue 로 이슈를 만들고 이 스킬로 진행한다.
+description: GitHub 이슈를 받아 이슈·선행·결정 확인 → 테스트 환경 확인 → 테스트 → 구현 → 검증 → PR(github-pr) 까지 진행한다. 사용자가 "이슈 #N 구현해/작업해/진행해", "이 이슈 처리해줘", "owner/repo#N 해결", "ISSUE-ID 작업 시작", "#5~#8 진행해" 라고 하거나 이슈 링크만 주고 "이거 해줘" 라고 할 때, 새 세션에서 이슈를 넘겨받아 코드를 고칠 때 쓴다. 이슈 없이 코드를 크게 바꾸려 할 때도 먼저 이슈를 만들고 이 스킬로 진행한다.
 ---
 
-# 이슈 구현
+# Implementing an issue
 
-이 스킬은 대개 **새 세션**에서 이슈 하나만 받고 시작한다. 이전 대화 맥락이 없으므로 이슈 본문·댓글·결정 기록과 저장소 문서가 유일한 근거다. 목표는 이슈의 완료 조건을 테스트로 증명하는 PR 하나다.
+This skill usually starts in a **new session** with just one issue. There is no earlier conversation, so the issue body, comments, decision log and repo docs are the only sources. The goal is one PR whose tests prove the issue's "done when" items.
 
-흐름: **준비(이슈·선행·환경) → 분류 → 테스트 → 구현 → 검증 → 이슈 갱신 → PR**
+Flow: **prepare (issue, prerequisites, environment) → classify → tests → implement → verify → update issue → PR**
 
-여러 이슈를 한꺼번에 맡았으면 먼저 [§8 여러 이슈](#8-여러-이슈를-맡을-때)로 순서를 정한다.
+If you were given several issues, first set the order with [§8 Several issues](#8-several-issues).
 
-## 1. 준비
+Output language: issue comments, PRs and reports follow the repo setting `language` in `.claude/github-issue.yml` (if missing, the user's language). Issue section names here are the github-issue skill's English glosses (e.g. "Needs user review" = `사용자 검토 필요`).
 
-### 1.1 이슈 읽기
+## 1. Prepare
+
+### 1.1 Read the issue
 
 ```bash
 gh issue view <N> -R <repo> --json number,title,state,labels,body,comments
 ```
 
-(`gh issue view --comments` 는 본문을 보여 주지 않는다 — 위처럼 JSON 으로 본문과 댓글을 함께 읽는다.)
+(`gh issue view --comments` does not show the body — read body and comments together as JSON, as above.)
 
-- "사용자 검토 필요"에 **열린 항목(`- [ ]`)이 있으면 그 부분은 구현하지 않는다.** 결정이 필요한 이유와 권장안을 정리해 사용자에게 묻는다. 결정과 무관한 부분만 먼저 진행할 수 있으면 그렇게 말하고 진행한다. 이슈는 사용자가 결정한 대로 구현하는 것이 원칙이라, 추측으로 결정을 대신하면 리뷰에서 되돌려진다.
-- "결정 기록"·댓글의 결정이 본문 다른 곳(작업 내용·대상)보다 우선한다 — 결정이 나중에 붙은 경우가 많다.
+- **If "Needs user review" has open items (`- [ ]`), do not implement those parts.** Summarize why a decision is needed plus the recommendation, and ask the user. If the parts unrelated to the decision can go first, say so and do them. Issues are implemented as the user decided; guessing a decision gets reverted in review.
+- Decisions in the "Decision log" and comments override the rest of the body (Work, Target) — decisions are often added later.
 
-### 1.2 선행 이슈
+### 1.2 Prerequisite issues
 
-이슈의 "선후관계"(없으면 "관련 이슈")에 **선행** 으로 적힌 이슈마다 상태를 본다:
+For every issue marked as a **prerequisite** in "Order" (or "Related issues" if there is none), check its state:
 
 ```bash
-gh issue view <선행 N> -R <repo> --json state,closedByPullRequestsReferences
+gh issue view <prereq N> -R <repo> --json state,closedByPullRequestsReferences
 ```
 
-선행 이슈가 닫히지 않았거나 그 PR 이 기본 브랜치에 병합되지 않았으면 **시작하지 않는다.** 사용자에게 어떤 선행 작업이 남았는지 알리고 멈춘다. 선행 작업 위에서 만들어야 할 코드가 아직 없기 때문이고, 억지로 시작하면 같은 파일을 두 번 고치게 된다. 사용자가 명시적으로 "선행 브랜치 위에서 시작"하라고 하면 그 브랜치를 기준으로 삼고 PR 에 적는다.
+If a prerequisite is not closed or its PR is not merged into the default branch, **do not start.** Tell the user which prerequisite work remains and stop. The code you would build on does not exist yet, and starting anyway means editing the same files twice. If the user explicitly says "start on top of the prerequisite branch", use that branch as the base and note it in the PR.
 
-### 1.3 저장소 설정·문서
+### 1.3 Repo config and docs
 
-`.claude/github-issue.yml`(특히 `verify`, `test_env`), `CLAUDE.md`, `README.md`, `docs/REPO_ARCHITECTURE.md` 가 있으면 읽는다. 저장소 문서가 이 스킬·공통 가이드보다 우선한다.
+Read `.claude/github-issue.yml` (especially `verify`, `test_env`), `CLAUDE.md`, `README.md`, `docs/REPO_ARCHITECTURE.md` if present. Repo docs override this skill and the common guides.
 
-### 1.4 언어별 공통 가이드
+### 1.4 Language guides
 
-바뀔 파일의 언어로 고른다. 이 플러그인의 `docs/<lang>/` 에 있다:
+Pick by the language of the files that will change. They are in this plugin's `docs/<lang>/`:
 
-- 경로: `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`, 구조는 같은 폴더의 `CLEAN_ARCHITECTURE.md`
-- 언어 판별: `Cargo.toml`·`.rs` → `rust`. 그 밖의 언어는 `ls ${CLAUDE_SKILL_DIR}/../../docs/` 로 있는 폴더를 확인한다.
-- 프론트엔드(`package.json` 에 `react`, 또는 `.ts`·`.tsx`·`.jsx` 파일): `docs/` 대신 frontend 스킬을 읽는다 — `${CLAUDE_SKILL_DIR}/../frontend/SKILL.md` 와, 그 §0 표에서 이슈에 해당하는 참고 문서(프레임워크 파일, API·목, 테스트, PWA, SEO/AEO).
-- lint·CI 설정은 같은 폴더의 `templates/`(Rust: `lints.toml`·`clippy.toml`·`rust-ci.yml`). 저장소에 lint 설정이 없으면 이슈 범위 밖이므로 넣지 말고, 필요하면 PR "참고"에 제안만 적는다.
-- 해당 언어 폴더가 없으면 저장소 문서와 그 언어의 일반 관례를 따르고, PR 의 "참고"에 가이드 없음을 적는다.
+- Path: `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`; structure in `CLEAN_ARCHITECTURE.md` in the same folder.
+- Language: `Cargo.toml`/`.rs` → `rust`. For other languages, check which folders exist with `ls ${CLAUDE_SKILL_DIR}/../../docs/`.
+- Frontend (`react` in `package.json`, or `.ts`/`.tsx`/`.jsx` files): read the frontend skill instead of `docs/` — `${CLAUDE_SKILL_DIR}/../frontend/SKILL.md` plus the references its §0 table names for this issue (framework, API and mocks, testing, PWA, SEO/AEO).
+- Lint and CI configs are in the same folder's `templates/` (Rust: `lints.toml`, `clippy.toml`, `rust-ci.yml`). If the repo has no lint config, adding one is out of scope; at most suggest it in the PR's "Notes".
+- If there is no folder for the language, follow the repo docs and the language's usual conventions, and note the missing guide in the PR's "Notes".
 
-### 1.5 테스트 환경 — 없으면 먼저 묻는다
+### 1.5 Test environment — ask first if it is missing
 
-`verify` 의 모든 명령을 실제로 돌릴 수 있는지 **코드를 고치기 전에** 확인한다. 설정의 `test_env` 가 있으면 그 `check` 명령을 돌리고, 없으면 `verify` 를 한 번 돌려 본다. 흔한 결손: DB·외부 서비스·도구(sqlx-cli 등)·기준선 파일·형제 저장소가 없음.
+Before touching code, confirm every `verify` command can actually run. If the config has `test_env`, run its `check`; otherwise run `verify` once. Common gaps: no DB or external service, missing tools (sqlx-cli …), missing baseline files or sibling repos.
 
-하나라도 못 돌리면 **구현을 시작하기 전에 사용자에게 묻는다.** 무엇이 없고, 그 때문에 무엇을 검증할 수 없는지, 선택지를 함께:
+If anything cannot run, **ask the user before implementing**: what is missing, what it prevents you from verifying, and the options:
 
-1. **환경을 준비한다**(권장) — 설정의 `test_env.setup` 이나 README 의 방법을 제시하고, 사용자가 준비하거나 준비를 허락하면 진행한다.
-2. **부분 검증으로 진행** — 돌릴 수 있는 것만 돌리고, 못 한 검증을 PR "확인하지 못한 것"에 빠짐없이 적고, PR 을 **draft** 로 연다(`gh pr create --draft`). 환경이 생기면 그때 마저 검증하고 ready 로 바꾼다.
-3. **멈춘다.**
+1. **Prepare the environment** (recommended) — present `test_env.setup` or the README's method; proceed once the user prepares it or allows you to.
+2. **Continue with partial verification** — run what you can, list every skipped check under the PR's "Not verified", and open the PR as **draft** (`gh pr create --draft`). Once the environment exists, finish verification and mark it ready.
+3. **Stop.**
 
-**임시 테스트 스택**: 저장소의 개발 compose 를 이 이슈만 쓰려고 따로 띄울 때는 프로젝트 이름을 이슈 ID 로 준다(`docker compose -p <id-소문자> …`, 예: `-p snd005`). 공유 개발 DB·다른 워크트리의 스택과 섞이지 않고, 끝난 뒤 cleanup 스킬이 이 이름으로 "이 작업이 만든 것"을 찾는다. 호스트 포트가 다른 스택과 겹치면 compose override 로 포트를 빼고(`ports: !reset []`) 컨테이너 안에서 실행한다. 이 스택에만 쓸 비밀번호는 무작위로 만들어 프로세스 환경변수로 넘기고(`.env` 를 고치지 않는다), 파일에 적었으면 정리 때 지운다. 띄운 명령(override 포함)은 그대로 기록해 둔다 — 정리 때 지워도 같은 환경을 다시 만들 수 있다는 근거다. 저장소 설정에 `test_env` 가 없으면 그 명령으로 `test_env.setup` 을 제안한다. 멈춰 있던 공유 컨테이너를 켰다면(`docker start`) 그것도 적어 둔다 — 끝날 때 멈춘다.
+**Temporary test stack**: when you bring up the repo's dev compose just for this issue, name the project after the issue ID (`docker compose -p <id-lowercase> …`, e.g. `-p snd005`). It stays apart from the shared dev DB and other worktrees' stacks, and the cleanup skill later finds "what this work created" by that name. If host ports clash with another stack, drop them with a compose override (`ports: !reset []`) and run inside the container. Generate random passwords for this stack only and pass them as process env vars (do not edit `.env`); if you wrote them to a file, delete it during cleanup. Record the exact commands (override included) — they prove the environment can be recreated after cleanup. If the config has no `test_env`, suggest those commands as `test_env.setup`. If you started a stopped shared container (`docker start`), note it too — stop it at the end.
 
-**Docker 메모리**: 큰 빌드(Rust 등) 전에 `docker info --format '{{.MemTotal}}'` 와 컨테이너 안 `free -m` 으로 여유를 본다. Windows Docker Desktop 은 `%USERPROFILE%\.wslconfig` 의 `memory` 가 VM 전체 한도라, 다른 컨테이너와 나눠 쓰다 모자라면 빌드 도중 엔진 전체가 응답하지 않는다(`docker ps` 가 멈춤·500). 여유가 4GB 아래면 병렬도를 낮추고(`cargo … -j 2`) 사용자에게 알린다. 엔진이 멈추면 Docker Desktop·WSL 재시작과 `.wslconfig` 변경은 사용자 환경을 바꾸는 일이라 먼저 묻는다.
+**Docker memory**: before big builds (Rust etc.) check headroom with `docker info --format '{{.MemTotal}}'` and `free -m` inside the container. On Windows Docker Desktop, `memory` in `%USERPROFILE%\.wslconfig` caps the whole VM; sharing it with other containers can make the entire engine hang mid-build (`docker ps` stalls or returns 500). With under 4GB free, lower parallelism (`cargo … -j 2`) and tell the user. If the engine hangs, restarting Docker Desktop/WSL or changing `.wslconfig` changes the user's environment — ask first.
 
-**긴 명령은 컨테이너 안 파일로**: 백그라운드로 돌리는 빌드·테스트는 출력을 컨테이너 안 파일로 남긴다(`docker exec <c> sh -c '<명령> > /tmp/run.txt 2>&1; echo exit=$? >> /tmp/run.txt'`). 진행 상황을 바로 볼 수 있고, 호스트 쪽 작업을 멈춰도 컨테이너 안 명령은 계속 돈다는 점을 잊지 않게 된다 — 멈출 때는 컨테이너 안에서 끝낸다.
+**Long commands write to a file in the container**: background builds and tests log to a file inside the container (`docker exec <c> sh -c '<cmd> > /tmp/run.txt 2>&1; echo exit=$? >> /tmp/run.txt'`). You can check progress at any time, and you will not forget that the command keeps running even if you stop the host-side job — stop it inside the container.
 
-생성물(`.sqlx/` 같은 쿼리 메타데이터, 스냅샷, lock 파일, 코드 생성 결과)은 **손으로 만들거나 고치지 않는다** — 도구로 다시 만들 수 없으면 그 사실을 PR 에 적고 2번처럼 draft 로 둔다. 손으로 고친 생성물은 빌드는 통과해도 실제와 다를 수 있고, 리뷰어가 그것을 구분할 수 없다.
+**Never write or edit generated files by hand** (`.sqlx/` query metadata, snapshots, lock files, codegen output). If a tool cannot regenerate one, say so in the PR and keep it draft as in option 2. A hand-edited generated file can build yet differ from reality, and the reviewer cannot tell.
 
-### 1.6 브랜치
+### 1.6 Branch
 
-- 이름: `<type>/<id-소문자>-<요약>` — `type` 은 커밋 type(§4) 중 이 이슈의 주된 것, `요약` 은 영어 kebab-case 2~5단어. 예: `refactor/order-002-remove-v1-order`, `feat/snd-004-kakao-retry`, `fix/auth-003-refresh-race`.
-- 이슈 하나 = 브랜치 하나 = PR 하나.
-- 기준: 기본 브랜치 최신(`git fetch` 후 `origin/<기본>`). 1.2 에서 사용자가 선행 브랜치 위를 허락했으면 그 브랜치.
-- **세션이 도구가 만든 브랜치(예: 워크트리의 `claude/…`)에서 시작했으면** 새 브랜치를 따로 만들지 말고 첫 push 전에 그 브랜치 이름을 규칙대로 바꾼다: `git branch -m <규칙 이름>`. 이미 push 한 브랜치는 이름을 바꾸지 않는다(PR 이 그 이름에 묶인다).
-- 기본 브랜치에 직접 커밋하지 않는다. 작업 트리가 깨끗하지 않으면 시작 전에 사용자에게 알린다.
+- Name: `<type>/<id-lowercase>-<summary>` — `type` is the issue's main commit type (§4), `summary` is 2–5 English kebab-case words. E.g. `refactor/order-002-remove-v1-order`, `feat/snd-004-kakao-retry`, `fix/auth-003-refresh-race`.
+- One issue = one branch = one PR.
+- Base: latest default branch (`origin/<default>` after `git fetch`). If the user allowed building on a prerequisite branch in 1.2, that branch.
+- **If the session started on a tool-made branch (e.g. a worktree's `claude/…`)**, do not create another branch; rename it to the rule before the first push: `git branch -m <name>`. Never rename an already pushed branch (the PR is tied to it).
+- Never commit directly to the default branch. If the working tree is not clean, tell the user before starting.
 
-### 1.7 기준선
+### 1.7 Baseline
 
-고치기 전에 `verify` 를 돌려 결과(테스트 이름·통과·실패 수)를 적어 둔다. 원래 실패하던 테스트를 내 변경 탓으로 착각하지 않기 위해서다. 실행 환경(Docker 컨테이너 등)은 저장소 README 를 따른다.
+Before changing anything, run `verify` and record the result (test names, pass and fail counts), so tests that were already failing are not mistaken for your breakage. Use the execution environment (Docker container etc.) the repo README describes.
 
-## 2. 분류
+## 2. Classify
 
-라벨이 아니라 **이슈 내용**(개요·작업 내용)으로 정한다 — `enhancement` 라벨이어도 실제로는 레거시 제거일 수 있다. 섞여 있으면 이슈를 나누자고 제안하거나, 커밋을 종류별로 나눈다.
+Decide by the **issue content** (Overview, Work), not the labels — an `enhancement` label can still be legacy removal. If it is mixed, suggest splitting the issue, or split commits by kind.
 
-| 종류 | 예 | 테스트 원칙 | 상세 |
+| Kind | Examples | Test principle | Details |
 |---|---|---|---|
-| **신규 기능·버그 수정** | API 추가, 규칙 변경, 버그 | 바뀔 동작을 테스트로 먼저 쓰고 **실패를 확인**한 뒤 구현 | [references/feature.md](references/feature.md) |
-| **리팩토링·레거시 제거** | 구조 이동, enum 도입, 경로·컬럼 제거 | 남는 동작은 **그대로**(같은 테스트가 통과), 없애는 동작은 없어졌음을 테스트 | [references/refactor.md](references/refactor.md) |
+| **New feature / bug fix** | new API, rule change, bug | write tests for the changed behavior first, **see them fail**, then implement | [references/feature.md](references/feature.md) |
+| **Refactor / legacy removal** | moving structure, adding enums, removing paths or columns | remaining behavior **unchanged** (same tests pass); removed behavior proven gone | [references/refactor.md](references/refactor.md) |
 
-해당 상세 문서를 읽고 따른다.
+Read and follow the matching reference.
 
-## 3. 테스트 먼저
+## 3. Tests first
 
-이슈의 **완료 조건**과 **작업 내용**을 테스트 목록으로 바꾼다. 테스트 하나가 완료 조건 하나 이상을 증명해야 하고, 증명하지 못하는 완료 조건(실서비스 확인, 운영 데이터 조회 등)은 "확인하지 못한 것"으로 따로 적어 둔다.
+Turn the issue's "Done when" and "Work" into a test list. Each test proves at least one "done when" item; items no test can prove (production checks, production data queries) go on a separate "Not verified" list.
 
-- 테스트 위치·이름·헬퍼는 저장소의 기존 테스트를 따른다(새 테스트 프레임워크를 들이지 않는다).
-- 외부 서비스·실계정이 필요한 테스트는 기본 실행에서 빼고(예: Rust `#[ignore]`), 실행하지 않았으면 실행했다고 쓰지 않는다.
-- 테스트만 담은 커밋을 먼저 만들어도 좋다(리뷰어가 "테스트가 무엇을 요구하는지"를 따로 볼 수 있다).
+- Follow the repo's existing tests for location, naming and helpers (no new test framework).
+- Exclude tests needing external services or real accounts from the default run (e.g. Rust `#[ignore]`), and never claim to have run what you did not run.
+- A tests-only commit first is fine (the reviewer can see what the tests demand on their own).
 
-## 4. 구현
+## 4. Implement
 
-- **이슈 범위만** 고친다. 작업 중 발견한 다른 문제는 고치지 말고 메모해 두었다가 끝에 github-issue 스킬로 새 이슈를 만들거나 사용자에게 알린다. 범위가 섞인 PR 은 리뷰와 되돌리기가 어렵다.
-- 언어 가이드(CODE_STYLE·CLEAN_ARCHITECTURE)를 따른다. 가이드와 기존 코드가 다르면 **이슈가 다루는 코드만** 가이드에 맞추고, 주변 코드 일괄 수정은 하지 않는다.
-- 작업 단위마다 커밋한다. 형식은 github-pr 스킬 §2(`<type>: <요약> (<이슈 ID>)` + 본문 + `Refs #N`). 파일은 경로로 추가한다.
-- 생성물은 저장소 문서대로 **도구로** 다시 만들어 함께 커밋한다(1.5).
-- 스키마에서 만드는 생성물(`.sqlx/` 쿼리 메타데이터 등)은 **이 PR 의 마이그레이션까지 적용한 DB** 로 만들고 확인한다 — 마이그레이션 전 스키마(공유 개발 DB 가 아직 이전 버전 등)로 만들면 오프라인 빌드는 통과해도 실제 스키마에서 컴파일이 깨진다. 공유 DB 를 바꾸지 말고 기준선 + 모든 마이그레이션을 적용한 임시 DB 를 만들어 거기서 `cargo sqlx prepare` / `--check` 를 돌리고 지운다. 오프라인(`SQLX_OFFLINE=true`) 빌드만으로는 생성물을 확인한 것이 아니다.
-- **여러 PR 이 함께 고치는 버전 문서**(계획서의 버전 줄·변경 이력, CHANGELOG 의 다음 번호): 이슈가 그 문서 수정을 요구하지 않으면 건드리지 않는다. 요구하면 PR 을 열기 직전에 기본 브랜치 최신을 병합하고 그 위의 다음 번호를 쓴다. 병렬로 진행 중인 다른 PR 과 번호가 겹칠 수 있으면 PR "참고"에 적는다 — 병합하는 쪽이 번호를 맞춘다.
-- DB 마이그레이션은 저장소 규칙(적용된 파일 수정 금지, 새 파일로 추가 등)을 따르고, 운영 데이터 확인이 필요한 단계는 코드로 대신하지 말고 이슈의 사용자 확인 항목으로 남긴다. 번호는 병렬 PR 과 겹치지 않게 열린 PR 들의 마이그레이션 번호를 확인하고 정한다.
+- Change **only the issue's scope.** Do not fix other problems you find; note them and at the end create issues with the github-issue skill or tell the user. Mixed-scope PRs are hard to review and to revert.
+- Follow the language guides (CODE_STYLE, CLEAN_ARCHITECTURE). Where the guide and existing code differ, align **only the code this issue covers**; no sweeping edits of surrounding code.
+- Commit per unit of work in the github-pr skill §2 format (`<type>: <summary> (<issue ID>)` + body + `Refs #N`). Add files by path.
+- Regenerate generated files **with their tools** per the repo docs and commit them together (1.5).
+- Generate schema-derived files (`.sqlx/` query metadata etc.) **from a DB with this PR's migrations applied** — generating from a pre-migration schema (e.g. a shared dev DB still on the old version) passes the offline build but breaks compilation against the real schema. Do not alter the shared DB; create a temp DB with baseline + all migrations, run `cargo sqlx prepare` / `--check` there, then drop it. An offline (`SQLX_OFFLINE=true`) build alone does not verify generated files.
+- **Versioned docs edited by many PRs** (version lines and change logs in plans, the next CHANGELOG number): leave them alone unless the issue requires the change. If it does, merge the latest default branch right before opening the PR and use the next number on top of it. If a parallel PR might take the same number, note it in the PR's "Notes" — whoever merges reconciles the numbers.
+- DB migrations follow the repo's rules (never edit applied files, add new ones …). Steps needing production data checks stay as user review items on the issue instead of being replaced by code. Pick migration numbers after checking open PRs so they do not collide.
 
-## 5. 검증
+## 5. Verify
 
-0. 작업하는 동안 기본 브랜치가 앞서 갔으면(`git fetch` 후 `git log HEAD..origin/<기본>`) 먼저 병합하고 **기준선을 다시 잰다** — 1.7 의 수치는 그 시점의 기본 브랜치 기준이다. PR 본문의 "기준선"도 새 수치로 적는다.
-1. `verify` 명령 전부(없으면 언어 가이드의 기본 검사 — Rust: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). `code_order` 가 있으면 언어마다 `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <경로...>` 도 돌린다(종료 코드 0 이어야 함. 1 이면 code-order 스킬로 정렬해 `style:` 커밋 하나로 따로 둔다).
-2. 1.7 기준선과 비교 — 새로 실패한 테스트 0, 테스트 수 변화가 의도와 맞는지(종류별 기준은 상세 문서).
-3. 완료 조건을 하나씩 대조해 "통과 근거(테스트 이름·명령 출력)" 또는 "확인 못 함(이유)"을 적는다.
-4. `git diff <기본 브랜치>...HEAD` 를 처음부터 끝까지 읽는다 — 의도하지 않은 변경, 남은 디버그 코드, 지운 코드를 아직 참조하는 곳(`grep`), 비밀값, 손으로 만든 생성물.
+0. If the default branch moved during the work (`git fetch`, then `git log HEAD..origin/<default>`), merge it first and **re-measure the baseline** — the 1.7 numbers belong to the old default branch. Put the new numbers in the PR body's "Baseline".
+1. Every `verify` command (if none, the language guide's defaults — Rust: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). If `code_order` exists, also run `node ${CLAUDE_SKILL_DIR}/../code-order/scripts/<lang>.mjs <paths...>` per language (must exit 0; on 1, reorder with the code-order skill and keep it as a separate `style:` commit).
+2. Compare with the 1.7 baseline — zero newly failing tests, and test count changes match the intent (per-kind bars in the references).
+3. Go through "Done when" one by one and record "passing evidence (test name, command output)" or "not verified (reason)".
+4. Read `git diff <default>...HEAD` from start to end — unintended changes, leftover debug code, remaining references to deleted code (`grep`), secrets, hand-made generated files.
 
-실패하면 고치고 다시 검증한다. 같은 실패를 세 번 넘게 못 풀면 멈추고 시도한 것과 막힌 지점을 사용자에게 알린다.
+On failure, fix and verify again. If the same failure survives more than three attempts, stop and tell the user what you tried and where you are stuck.
 
-## 6. 이슈 갱신
+## 6. Update the issue
 
-- 이슈 본문 "작업 내용"에서 끝낸 항목을 체크한다(`gh issue edit <N> --body-file`). 본문의 결정·검토 항목은 바꾸지 않는다.
-- 하지 못한 항목·새로 생긴 사용자 확인 사항은 이슈 댓글로 남긴다.
+- Tick the finished items in the body's "Work" (`gh issue edit <N> --body-file`). Do not change decisions or review items in the body.
+- Comment on the issue with items not done and any new user checks.
 
 ## 7. PR
 
-github-pr 스킬로 PR 을 만든다(제목 = 이슈 제목, 본문 = 커밋 요약 + 검증 결과 + 이슈 연결). 검증 섹션에 5단계 결과를 그대로 옮기고, 확인하지 못한 완료 조건을 빠짐없이 적는다.
+Create the PR with the github-pr skill (title = issue title, body = commit summary + verification + issue link). Copy the step 5 results into the verification section and list every unverified "done when" item.
 
-- 이슈 연결: 이슈의 작업 내용을 이 PR 로 모두 끝내고 열린 검토 항목이 없으면 `Closes #N`. 미결정 항목이 남았거나 일부만 했으면 `Refs #N`(병합해도 이슈가 닫히지 않는다).
-- **운영 데이터 확인이 남은 경우**(동작이 운영 데이터에 따라 달라지는데 이 환경에서 볼 수 없음): `Refs #N` 으로 두고 사용자에게 **검토를 요청**한다 — 이슈 본문의 **"사용자 검토 필요" 섹션**에 체크 항목으로 돌릴 읽기 전용 쿼리와 결과별로 달라지는 점(예: "이 값이 있으면 그 양식은 발송 실패")을 적고 `needs-review` 라벨을 붙인 뒤, 최종 보고에서 쿼리를 그대로 보여 준다. 사용자가 결과를 주면 확인 항목을 체크하고 PR 을 `Closes #N` 으로 바꾼다.
-- 1.5 에서 부분 검증으로 진행했으면 draft.
+- Issue link: `Closes #N` if this PR finishes all of the issue's work and no review item is open. `Refs #N` if decisions remain or only part was done (merging will not close the issue).
+- **When production data checks remain** (behavior depends on production data you cannot see here): use `Refs #N` and **ask the user to review** — add check items to the issue body's **"Needs user review"** section with the read-only query to run and what changes per result (e.g. "if this value exists, that template fails to send"), add the `needs-review` label, and show the query verbatim in the final report. When the user returns the result, tick the item and switch the PR to `Closes #N`.
+- Draft if you continued with partial verification in 1.5.
 
-PR 을 올린 뒤 cleanup 스킬로 이 작업이 만든 것(임시 스택·워크트리·임시 파일·남은 백그라운드 작업)을 정리하고, 이 작업이 켠 컨테이너를 멈춘다 — 끝난 작업의 컨테이너가 돌고 있지 않게. 브랜치는 PR 이 병합된 뒤에 지운다.
+After opening the PR, use the cleanup skill to remove what this work created (temp stacks, worktrees, temp files, leftover background jobs) and stop the containers this work started — finished work should not leave containers running. Delete the branch after the PR is merged.
 
-마지막으로 사용자에게 알린다: PR 링크, 확인하지 못한 것, 새로 만든 이슈, 배포 순서 같은 주의점, 이 PR 을 선행으로 기다리는 이슈. PR 리뷰는 같은 저장소에서 **다른 세션**으로 pr-reviewer 스킬을 쓰도록 안내한다 — 구현한 세션이 스스로 검토하면 같은 가정을 반복하기 쉽다.
+Finally tell the user: the PR link, what was not verified, new issues created, cautions such as deploy order, and issues waiting on this PR as a prerequisite. For review, point them to the pr-reviewer skill in a **different session** on the same repo — a session reviewing its own work tends to repeat its own assumptions.
 
-## 8. 여러 이슈를 맡을 때
+## 8. Several issues
 
-"#5~#8 진행해"처럼 여러 이슈를 받으면 구현 전에 **실행 계획**을 세워 사용자에게 보여 준다.
+Given several issues ("do #5–#8"), build an **execution plan** before implementing and show it to the user.
 
-1. 이슈마다 "선후관계"·"관련 이슈"·"대상" 파일을 읽는다.
-2. 다음이면 **직렬**(앞 것이 병합된 뒤 시작):
-   - 이슈에 `선행: #N` 이 있다.
-   - 앞 이슈의 결과(새 기준선, 바뀐 테스트 환경, 지워질 코드)를 뒤 이슈가 전제한다.
-   - 같은 파일의 같은 부분을 고친다, 같은 생성물·마이그레이션 번호·버전 문서를 고친다.
-3. 그 밖은 **병렬**(각자 세션·워크트리). 같은 파일의 다른 부분만 겹치면 병렬로 하되 병합 순서를 정해 둔다.
-4. 계획을 표로: `순서 | 이슈 | 선행 | 병렬 그룹 | 겹치는 파일 | 병합 순서`. 이슈 본문의 "선후관계"가 비어 있거나 계획과 다르면 github-issue 스킬로 고친다(사용자 확인 후).
-5. 병렬 그룹만 시작하고, 직렬의 뒤 이슈는 앞 이슈가 닫힐 때까지 시작하지 않는다(1.2).
+1. Read each issue's "Order", "Related issues" and "Target" files.
+2. **Serial** (start after the earlier one merges) when:
+   - the issue says `Prerequisite: #N`;
+   - it assumes the earlier issue's result (new baseline, changed test environment, removed code);
+   - both edit the same part of the same file, or the same generated files, migration number or versioned doc.
+3. Everything else is **parallel** (each in its own session and worktree). If they overlap only in different parts of the same file, run in parallel and fix the merge order.
+4. Plan as a table: `order | issue | prerequisite | parallel group | overlapping files | merge order`. If an issue's "Order" is empty or disagrees with the plan, fix it with the github-issue skill (after the user confirms).
+5. Start only the parallel group; do not start a serial follow-up until the earlier issue closes (1.2).
