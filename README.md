@@ -23,9 +23,16 @@ harness/
         ├── code-order/                      # /harness:code-order — 파일 안 코드 순서 확인·정렬
         │   ├── SKILL.md
         │   └── scripts/rust.mjs, rust.test.mjs   # Node 18+, 의존성 없음
-        └── cleanup/                         # /harness:cleanup — 작업 후 세션·워크트리·브랜치·Docker 정리, WSL 디스크 압축
+        ├── cleanup/                         # /harness:cleanup — 작업 후 세션·워크트리·브랜치·Docker 정리, WSL 디스크 압축
+        │   ├── SKILL.md
+        │   └── scripts/inventory.mjs (Node 18+, 읽기 전용), compact-vhdx.ps1 (Windows)
+        ├── workspace-claude-md/             # /harness:workspace-claude-md — 여러 저장소 워크스페이스의 CLAUDE.md(루트·저장소별)
+        │   ├── SKILL.md
+        │   ├── scripts/workspace-map.mjs, workspace-map.test.mjs   # 저장소·스택·docs 트리 지도, CLAUDE.md 경로 검사(Node 18+, 의존성 없음)
+        │   └── references/root-template.md, project-types.md, backend-rust.md, docker-dev.md
+        └── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
             ├── SKILL.md
-            └── scripts/inventory.mjs (Node 18+, 읽기 전용), compact-vhdx.ps1 (Windows)
+            └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
             └── templates/                    # lints.toml, clippy.toml, rust-ci.yml — 각 저장소에 복사해 CI 로 검사
