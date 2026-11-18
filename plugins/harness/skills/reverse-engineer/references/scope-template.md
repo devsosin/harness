@@ -1,6 +1,6 @@
-# `.claude/reverse-engineering/scope.md` 틀
+# `.claude/reverse-engineering/scope.md` template
 
-처음 실행할 때 스킬이 이 틀로 초안을 쓰고 사용자에게 확인받는다. 초안의 근거: `workspace-claude-md` 의 `workspace-map.mjs` 출력(저장소·스택), README, 기존 `analysis/`.
+On the first run the skill drafts from this template and has the user confirm it. Draft sources: the output of `workspace-claude-md`'s `workspace-map.mjs` (repos, stacks), README, existing `analysis/`.
 
 ```markdown
 # Reverse-engineering scope
@@ -32,7 +32,7 @@
 | <INV> | <coupon inventory> |
 ```
 
-`target-stack.md` 는 사용자가 쓴다. 틀:
+`target-stack.md` is written by the user. Template:
 
 ```markdown
 # Target stack — user decisions
