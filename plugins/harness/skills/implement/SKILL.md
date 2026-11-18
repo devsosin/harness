@@ -1,6 +1,6 @@
 ---
 name: implement
-description: GitHub 이슈를 받아 구현하는 공통 절차 — 이슈·선행 이슈·결정 확인 → 테스트 환경 확인 → 이슈 기반 테스트 작성 → 구현 → 테스트 검증 → github-pr 스킬로 PR 까지. 신규 기능(테스트 먼저, 실패 확인 후 구현)과 리팩토링·레거시 제거(동작 보존, 테스트 수 비교)를 나눠 진행하고, 여러 이슈를 맡으면 선후관계로 직렬·병렬을 나눈다. 언어별 규칙은 harness 의 docs/<lang>/CODE_STYLE.md·CLEAN_ARCHITECTURE.md 를 따른다. 사용자가 "이슈 #N 구현해/작업해/진행해", "이 이슈 처리해줘", "owner/repo#N 해결", "ISSUE-ID 작업 시작", "#5~#8 진행해", 이슈 링크만 주고 "이거 해줘" 라고 할 때, 새 세션에서 이슈를 넘겨받아 코드를 고쳐야 할 때 이 스킬을 쓴다. 이슈 없이 코드를 크게 바꾸려 할 때도 먼저 github-issue 로 이슈를 만들고 이 스킬로 진행한다.
+description: GitHub 이슈를 받아 구현하는 공통 절차 — 이슈·선행 이슈·결정 확인 → 테스트 환경 확인 → 이슈 기반 테스트 작성 → 구현 → 테스트 검증 → github-pr 스킬로 PR 까지. 신규 기능(테스트 먼저, 실패 확인 후 구현)과 리팩토링·레거시 제거(동작 보존, 테스트 수 비교)를 나눠 진행하고, 여러 이슈를 맡으면 선후관계로 직렬·병렬을 나눈다. 언어별 규칙은 harness 의 docs/<lang>/CODE_STYLE.md·CLEAN_ARCHITECTURE.md, 프론트엔드는 frontend 스킬을 따른다. 사용자가 "이슈 #N 구현해/작업해/진행해", "이 이슈 처리해줘", "owner/repo#N 해결", "ISSUE-ID 작업 시작", "#5~#8 진행해", 이슈 링크만 주고 "이거 해줘" 라고 할 때, 새 세션에서 이슈를 넘겨받아 코드를 고쳐야 할 때 이 스킬을 쓴다. 이슈 없이 코드를 크게 바꾸려 할 때도 먼저 github-issue 로 이슈를 만들고 이 스킬로 진행한다.
 ---
 
 # 이슈 구현
@@ -44,6 +44,7 @@ gh issue view <선행 N> -R <repo> --json state,closedByPullRequestsReferences
 
 - 경로: `${CLAUDE_SKILL_DIR}/../../docs/<lang>/CODE_STYLE.md`, 구조는 같은 폴더의 `CLEAN_ARCHITECTURE.md`
 - 언어 판별: `Cargo.toml`·`.rs` → `rust`. 그 밖의 언어는 `ls ${CLAUDE_SKILL_DIR}/../../docs/` 로 있는 폴더를 확인한다.
+- 프론트엔드(`package.json` 에 `react`, 또는 `.ts`·`.tsx`·`.jsx` 파일): `docs/` 대신 frontend 스킬을 읽는다 — `${CLAUDE_SKILL_DIR}/../frontend/SKILL.md` 와, 그 §0 표에서 이슈에 해당하는 참고 문서(프레임워크 파일, API·목, 테스트, PWA, SEO/AEO).
 - lint·CI 설정은 같은 폴더의 `templates/`(Rust: `lints.toml`·`clippy.toml`·`rust-ci.yml`). 저장소에 lint 설정이 없으면 이슈 범위 밖이므로 넣지 말고, 필요하면 PR "참고"에 제안만 적는다.
 - 해당 언어 폴더가 없으면 저장소 문서와 그 언어의 일반 관례를 따르고, PR 의 "참고"에 가이드 없음을 적는다.
 
