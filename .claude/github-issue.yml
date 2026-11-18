@@ -1,0 +1,51 @@
+repo: devsosin/harness
+language: ko
+title_format: "[{id}] {summary}"
+id_prefixes: [SKILL]
+
+labels:
+  type: [bug, enhancement, documentation]
+  areas:
+    - name: "skill:implement"
+      color: 1d76db
+      description: implement 스킬
+      when: plugins/harness/skills/implement/ 가 대상일 때
+    - name: "skill:github-pr"
+      color: 1d76db
+      description: github-pr 스킬
+      when: plugins/harness/skills/github-pr/ 가 대상일 때
+    - name: "skill:pr-reviewer"
+      color: 1d76db
+      description: pr-reviewer 스킬
+      when: plugins/harness/skills/pr-reviewer/ 가 대상일 때
+    - name: "skill:github-issue"
+      color: 1d76db
+      description: github-issue 스킬
+      when: plugins/harness/skills/github-issue/ 가 대상일 때
+    - name: "skill:code-order"
+      color: 1d76db
+      description: code-order 스킬과 스크립트
+      when: plugins/harness/skills/code-order/ 가 대상일 때
+    - name: "skill:cleanup"
+      color: 1d76db
+      description: cleanup 스킬과 스크립트
+      when: plugins/harness/skills/cleanup/ 가 대상일 때
+    - name: "docs:rust"
+      color: 0e8a16
+      description: Rust 공통 가이드와 템플릿
+      when: plugins/harness/docs/rust/ 가 대상일 때
+  review:
+    name: needs-review
+    color: d93f0b
+    description: 사용자 검토·결정이 필요한 항목이 있음
+  on_hold:
+    name: "status:on-hold"
+    color: bfbfbf
+    description: 사용자 결정으로 보류
+
+verify:
+  - claude plugin validate .
+  - claude plugin validate plugins/harness
+  - node --test plugins/harness/skills/code-order/scripts/rust.test.mjs
+
+decided: 2026-11-18
