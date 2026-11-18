@@ -73,3 +73,11 @@ A plain comment followed by a blank line is a section heading (e.g. `// --------
 - Test behavior, not implementation details: for boundary types, serialized field names, enum values, numeric vs. string representation, required fields and unknown values; for workflows, failure paths, partial results and mutation outcomes. Give `assert!` a message when the reason is not obvious.
 - Keep tests that need live services, credentials or real state changes apart from routine tests (e.g. `#[ignore]`). Report only checks that were actually run.
 - Checks (same as [templates/rust-ci.yml](templates/rust-ci.yml)): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (supported feature combinations), `cargo test`, `code-order` script.
+
+## 9. Macros
+
+- Use derive and attribute macros from established crates where the type is the contract: `serde` at boundaries (§6), `thiserror` for error enums (§5), `clap` for command-line arguments (doc comments become the help text). Test the representation they produce, not the generated code.
+- Write your own macro only when a function, generic or trait cannot remove the repetition (the same `impl` for many types, compile-time checks of literals). Prefer `macro_rules!` over a proc-macro crate.
+- Keep macros in the framework layer: in the module that owns the pattern (or one `macros.rs`), `pub(crate)`. Feature and application code calls macros; it does not define them.
+- Libraries: `#[macro_export]` only when the macro is meant to be public API — it then becomes part of the semver surface.
+- Document on the macro what it generates. A macro call that declares items follows item order (§7).
