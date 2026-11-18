@@ -30,9 +30,12 @@ harness/
         │   ├── SKILL.md
         │   ├── scripts/workspace-map.mjs, workspace-map.test.mjs   # 저장소·스택·docs 트리 지도, CLAUDE.md 경로 검사(Node 18+, 의존성 없음)
         │   └── references/root-template.md, project-types.md, backend-rust.md, docker-dev.md
-        └── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
+        ├── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
+        │   ├── SKILL.md
+        │   └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
+        └── reverse-engineer/                # /harness:reverse-engineer — 기존 시스템 역공학 → 재구축 As-is 문서(STEP 1~8)
             ├── SKILL.md
-            └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
+            └── references/steps.md, stacks.md(스택별 볼 곳), scope-template.md, security-baseline.md(SR)
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
             └── templates/                    # lints.toml, clippy.toml, rust-ci.yml — 각 저장소에 복사해 CI 로 검사
