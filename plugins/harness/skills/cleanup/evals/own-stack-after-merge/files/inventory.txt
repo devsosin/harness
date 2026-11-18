@@ -1,0 +1,30 @@
+## git C:/work/shop/backend
+  default origin/main, current fix/snd-005-messaging-0-3-0
+  worktree C:/work/shop/backend/.claude/worktrees/snd005-baseline [(detached)] clean
+  branch feat/snd-002-messaging-crate (merged into origin/main)
+  branch fix/snd-005-messaging-0-3-0 (current, merged into origin/main)
+  branch main (merged into origin/main)
+## docker
+  Images: 7.3GB (reclaimable 4.1GB (56%))
+  Containers: 487kB (reclaimable 426kB (87%))
+  Local Volumes: 31.7GB (reclaimable 9.3GB (29%))
+  Build Cache: 0B (reclaimable 0B)
+  container snd005-rust-1 exited MINE project=snd005 recreatable
+  container snd005-db-1 exited MINE project=snd005 recreatable
+  container tready-db running project=db recreatable
+  container tready-db-test running project=tready-test recreatable no-restart-policy
+  volume snd005_cargo-git 275kB MINE used by snd005-rust-1
+  volume snd005_cargo-registry 442MB MINE used by snd005-rust-1
+  volume snd005_cargo-target 21GB MINE used by snd005-rust-1
+  volume snd005_pg-data 66MB MINE-DATA used by snd005-db-1
+  volume tready-srv013-target 4.3GB CACHE
+  volume treadydb-target 4.2GB CACHE
+  volume tready-cargo-registry 545MB CACHE
+  volume recipe-app_pgdata 87MB DATA
+  volume tready-db-data 107MB IN-USE used by tready-db
+  volume tready-db-test-data 108MB IN-USE used by tready-db-test
+  image snd005-rust:latest 2.27GB MINE
+  network snd005_default MINE
+## wsl disk
+  C:\Users\dev\AppData\Local\Docker\wsl\disk\docker_data.vhdx: 77.4GB, docker uses ~39.0GB, reclaimable by compaction ~38.4GB
+  host C: 237.9GB total, 30.2GB free; compaction threshold 20.0GB -> PROPOSE

@@ -1,0 +1,25 @@
+## git C:/work/svc
+  default origin/master, current master
+  branch master (current, merged into origin/master)
+## docker
+  Images: 9.8GB (reclaimable 6.2GB (63%))
+  Containers: 300kB (reclaimable 250kB (83%))
+  Local Volumes: 14.6GB (reclaimable 13.9GB (95%))
+  Build Cache: 3.4GB (reclaimable 3.4GB)
+  container mrt004-dev exited project=mrt004 recreatable
+  container smart004-dev exited project=smart004 compose-files-missing
+  container tready-db running project=db recreatable
+  container tready-db-test running project=tready-test recreatable no-restart-policy
+  volume mrt004_cargo-target 6.1GB CACHE-ATTACHED used by mrt004-dev
+  volume smart004_target 5.2GB CACHE-ATTACHED used by smart004-dev
+  volume tready-cargo-registry 545MB CACHE
+  volume sosin-client_cargo-registry 273MB CACHE
+  volume recipe-app_pgdata 87MB DATA
+  volume old-reports 1.6GB UNKNOWN
+  volume tready-db-data 107MB IN-USE used by tready-db
+  volume tready-db-test-data 108MB IN-USE used by tready-db-test
+  image tready24/tready-server:20261109-42594fc 156MB
+  image 9a1b2c3d4e5f 1.2GB DANGLING
+## wsl disk
+  C:\Users\dev\AppData\Local\Docker\wsl\disk\docker_data.vhdx: 62.0GB, docker uses ~28.2GB, reclaimable by compaction ~33.8GB
+  host C: 476.9GB total, 44.8GB free; compaction threshold 50.0GB -> below threshold

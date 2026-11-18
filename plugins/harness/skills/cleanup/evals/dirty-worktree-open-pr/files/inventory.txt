@@ -1,0 +1,23 @@
+## git C:/work/app
+  default origin/main, current feat/ord-010-export-csv
+  worktree C:/work/app/.claude/worktrees/ord010-try [feat/ord-010-try-stream] DIRTY
+  branch feat/ord-010-export-csv (current)
+  branch feat/ord-010-try-stream (no upstream)
+  branch main (merged into origin/main)
+## docker
+  Images: 3.1GB (reclaimable 0.9GB (29%))
+  Containers: 120kB (reclaimable 60kB (50%))
+  Local Volumes: 6.2GB (reclaimable 2.0GB (32%))
+  Build Cache: 1.1GB (reclaimable 1.1GB)
+  container ord010-api-1 exited MINE project=ord010 recreatable
+  container ord010-db-1 exited MINE project=ord010 recreatable
+  container shared-db running project=dev recreatable
+  volume ord010_target 3.8GB MINE used by ord010-api-1
+  volume ord010_pgdata 70MB MINE-DATA used by ord010-db-1
+  volume app-data-cache 1.9GB CACHE
+  volume dev_pgdata 300MB IN-USE used by shared-db
+  image 3f2a91c0d1e4 640MB DANGLING
+  network ord010_default MINE
+## wsl disk
+  C:\Users\dev\AppData\Local\Docker\wsl\disk\docker_data.vhdx: 16.0GB, docker uses ~10.4GB, reclaimable by compaction ~5.6GB
+  host C: 254.7GB total, 60.3GB free; compaction threshold 20.0GB -> below threshold
