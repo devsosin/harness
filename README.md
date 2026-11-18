@@ -73,7 +73,13 @@ claude plugin install harness@devsosin-harness
 
 ## 스킬 추가
 
-`plugins/harness/skills/<이름>/SKILL.md` 를 만들고 `plugin.json` 의 `version` 을 올린다. 확인:
+`plugins/harness/skills/<이름>/SKILL.md` 를 만들고 `plugin.json` 의 `version` 을 올린다. 작성 규칙:
+
+- `description`(스킬 선택 때 읽힘)은 **한국어**로, 무엇을 하는지 한 문장 + 언제 쓰는지(사용자가 쓰는 말) 위주로 약 300자 안팎. 절차 요약은 본문으로. `<`·`>` 는 쓰지 않는다 — 스킬 목록에서 `&lt;` 로 바뀌고 그 뒤가 잘린다.
+- 본문과 `references/*.md`(스킬 실행 때 읽힘)는 **영어**로 간결하게. 다른 스킬이 참조하는 절 번호(예: implement §1.5)는 유지한다.
+- 본문에 출력 언어 한 줄: 스킬이 만드는 이슈·PR·보고는 저장소 설정 `language`(없으면 사용자 언어)를 따른다. 저장소에 그대로 나가는 출력물 틀(`assets/*-template.md` 등)은 그 언어로 둔다.
+
+확인:
 
 ```bash
 claude plugin validate .
