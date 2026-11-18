@@ -20,9 +20,12 @@ harness/
         │   └── references/feature.md, refactor.md
         ├── pr-reviewer/                     # /harness:pr-reviewer — PR 적대적 리뷰(초안)
         │   └── SKILL.md
-        └── code-order/                      # /harness:code-order — 파일 안 코드 순서 확인·정렬
+        ├── code-order/                      # /harness:code-order — 파일 안 코드 순서 확인·정렬
+        │   ├── SKILL.md
+        │   └── scripts/rust.mjs, rust.test.mjs   # Node 18+, 의존성 없음
+        └── cleanup/                         # /harness:cleanup — 작업 후 세션·워크트리·브랜치·Docker 정리, WSL 디스크 압축
             ├── SKILL.md
-            └── scripts/rust.mjs, rust.test.mjs   # Node 18+, 의존성 없음
+            └── scripts/inventory.mjs (Node 18+, 읽기 전용), compact-vhdx.ps1 (Windows)
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
             └── templates/                    # lints.toml, clippy.toml, rust-ci.yml — 각 저장소에 복사해 CI 로 검사

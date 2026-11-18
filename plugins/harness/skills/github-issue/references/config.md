@@ -53,6 +53,7 @@ verify:
 
 # verify 를 돌리는 데 필요한 환경(선택). implement 스킬이 구현 전에 check 를 돌려 보고,
 # 실패하면 setup 을 제시하며 사용자에게 먼저 묻는다(부분 검증으로 진행할지 등).
+# cleanup 스킬도 setup 을 "지워도 다시 만들 수 있다"는 근거로 쓴다 — 이슈별 임시 스택은 `-p <이슈 ID>` 를 붙여 같은 명령으로 띄운다.
 # test_env:
 #   needs: [PostgreSQL 16 (개발 compose 의 db), sqlx-cli 0.9]
 #   setup: docker compose -f docker-compose.dev.yml up -d db

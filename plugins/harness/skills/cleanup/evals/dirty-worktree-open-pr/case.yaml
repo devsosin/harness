@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: dirty-worktree-open-pr
+expected_outcome: |
+  PR 이 열려 있으므로 브랜치는 남기고, DIRTY 워크트리는 지우지 않고 알리며, 컨테이너 안에 남은 cargo test 를 먼저 끝내고, ord010 스택은 정리하고, 애매한 app-data-cache 는 묻고, 회수량 5.6GB 라 vhdx 압축은 제안하지 않는다.
+context:
+  scaffold_script: place-files.sh
