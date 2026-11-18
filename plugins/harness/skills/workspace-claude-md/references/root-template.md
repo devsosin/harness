@@ -19,7 +19,7 @@ This folder is **not** a git repository; the folders below are separate reposito
 ├── frontend/       # New React SPA (owner/frontend-repo)
 ├── <legacy>/       # Existing system — read-only reference, never modify
 ├── db/             # init.sql (schema baseline), seed.sql (anonymized sample)
-├── analysis/       # As-is: reverse-engineering output (written only by /reverse-engineer)
+├── analysis/       # As-is: reverse-engineering output (written only by `harness:reverse-engineer`)
 └── docs/
     ├── product/    # To-be features (F-*), scenarios, TechStack, API spec
     ├── design/     # BASE (design system), pages/, components/

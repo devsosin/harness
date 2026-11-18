@@ -19,7 +19,7 @@ Signs: a legacy folder (Spring Boot `build.gradle`/`pom.xml`, PHP, older Python)
 - **Two document sets, never mixed**: `analysis/` = As-is (what the old system does, with evidence), `docs/` = To-be (what we build). As-is behavior is evidence, not a requirement — especially security gaps.
 - **Sources of truth**: user decisions + mandatory security requirements (e.g. `target-stack.md`, `SR-*`) → `docs/product` → `docs/design` → `analysis/`.
 - **Legacy is read-only**: never modify; never copy credentials found there (treat them as exposed).
-- **Who writes `analysis/`**: only the reverse-engineering workflow. Other tasks report conflicts instead of editing it.
+- **Who writes `analysis/`**: only the `harness:reverse-engineer` skill (config in `.claude/reverse-engineering/scope.md` and `target-stack.md`). Other tasks report conflicts instead of editing it.
 - **Same database?** If the new system reuses the existing DB, schema names/types/enum values are constraints; schema changes are explicit migrations with a decision recorded.
 - **Cutover**: where the cutover plan lives (`docs/operation/Migration.md`) and what must be true before switching (data checks, parallel run, rollback).
 
