@@ -1,6 +1,6 @@
-# 기본 보안 요구사항 (SR)
+# Baseline security requirements (SR)
 
-`target-stack.md` 의 출발점. 두 재구축 프로젝트(관리자 백오피스, Rust/Axum + React)에서 쓴 목록을 스택 중립으로 줄였다. 프로젝트에 맞지 않는 항목은 지우지 말고 "해당 없음 — 이유"로 남긴다(번호가 다른 문서에서 참조된다).
+The starting point for `target-stack.md`: the lists used in two rebuild projects (admin back office, Rust/Axum + React), trimmed to be stack-neutral. Do not delete items that do not fit the project; mark them "n/a — reason" (other docs reference the numbers).
 
 | ID | Requirement |
 |---|---|
@@ -22,4 +22,4 @@
 | SR-16 | Third-party credentials stored in the DB are encrypted at rest (authenticated encryption, key from the environment, key version, bound to the owner record), write-only through the API, decrypted only at use, audited. |
 | SR-17 | Inbound webhooks/callbacks are authenticated (signature or shared secret) or, if the provider cannot sign, only accepted for requests the server is waiting for, and are idempotent. |
 
-SR-17 은 원래 목록에 없던 것이다. 서명 없는 외부 취소 결과 콜백을 받아야 했던 경우에서 더했다.
+SR-17 was not in the original lists; it was added from a case that had to accept unsigned external cancellation-result callbacks.
