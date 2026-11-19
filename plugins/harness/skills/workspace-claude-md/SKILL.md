@@ -66,8 +66,9 @@ If mixed (re-engineering + migration), write both. If unsure, ask the user once.
 
 1. Host tools: `cargo --version`, `node --version`, `pnpm --version`, `docker version`. Without Rust, write Docker commands (this user defaults to Docker).
 2. Run each repo's `verify` (or build and test) once, in the background if slow. For commands you could not run, append `(not verified: <reason>)` in CLAUDE.md and report it.
-3. Write the naming rule (compose `-p <task id>`) so per-task containers and volumes can be removed. The cleanup procedure itself belongs to the harness `cleanup` skill — CLAUDE.md gets only the rule and that skill's name.
-4. If any path touches a DB with production data or real external APIs (payment, messaging, sales channels), write "confirm with the user before calling".
+3. New service repos: write the three run modes (mock / remote / local compose) and their one-line commands. The rules and templates are the `harness:local-run` skill (`${CLAUDE_SKILL_DIR}/../local-run/SKILL.md`); CLAUDE.md gets only the commands and `.env.example` key names.
+4. Write the naming rule (compose `-p <task id>`) so per-task containers and volumes can be removed. The cleanup procedure itself belongs to the harness `cleanup` skill — CLAUDE.md gets only the rule and that skill's name.
+5. If any path touches a DB with production data or real external APIs (payment, messaging, sales channels), write "confirm with the user before calling".
 
 ## 6. Write
 

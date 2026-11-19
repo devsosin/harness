@@ -62,6 +62,14 @@ When documents disagree, follow this order and report the conflict instead of si
 | `backend/` | `docker compose -p <task-id> -f docker-compose.dev.yml run --rm rust cargo test` |
 | `frontend/` | `pnpm typecheck && pnpm lint && pnpm test` |
 
+- Run modes (`harness:local-run`):
+
+  | Mode | Command | Needs |
+  |---|---|---|
+  | mock | `cd frontend && pnpm dev:mock` | nothing |
+  | remote | `cd frontend && pnpm dev` (+ backend run command) | `.env.local` / `.env` from `.env.example` (<keys>) |
+  | local | `cd <compose repo> && docker compose up -d --wait` | `.env` with `LOCAL_PG_PASSWORD`; data is rebuilt from migrations + seed |
+
 - Dev/test containers are per task: `docker compose -p <task-id> …`, so parallel sessions do not share or overwrite each other's containers. Remove them when the task ends (`harness:cleanup`).
 - <DB tests need data: which DB, which tests, how they roll back.>
 

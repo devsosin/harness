@@ -33,6 +33,9 @@ harness/
         ├── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
         │   ├── SKILL.md
         │   └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
+        ├── local-run/                       # /harness:local-run — 실행 모드 3가지(mock·remote·local compose)와 배포 준비
+        │   ├── SKILL.md
+        │   └── references/compose.md(.env.example·Vite 프록시·compose.yaml), deploy.md(운영 compose·nginx·certbot)
         └── reverse-engineer/                # /harness:reverse-engineer — 기존 시스템 역공학 → 재구축 As-is 문서(STEP 1~8)
             ├── SKILL.md
             └── references/steps.md, stacks.md(스택별 볼 곳), scope-template.md, security-baseline.md(SR)

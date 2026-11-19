@@ -24,8 +24,8 @@ src/
 
 ## Env and modes
 
-- `.env.mock` (`VITE_API_MOCK=true`) for `pnpm dev:mock`; `.env` for real backend. Only `VITE_*` reaches the client and it is public.
-- Dev proxy: `server.proxy['/api'] = 'http://localhost:8080'` so cookies stay same-origin.
+- Run modes follow the `harness:local-run` skill: `.env.mock` (`VITE_API_MOCK=true`) for `pnpm dev:mock` (mode 1); `.env.local` `API_PROXY_TARGET` for `pnpm dev` against an existing server (mode 2); compose for the full local stack (mode 3). Only `VITE_*` reaches the client and it is public.
+- Dev proxy: `server.proxy['/api']` → `API_PROXY_TARGET` (default `http://localhost:8080`) so cookies stay same-origin.
 - Mocks start only when the mode says so (`if (import.meta.env.VITE_API_MOCK === 'true') await import('./mocks/browser')`), so production bundles contain no mock code — check with `pnpm build` and a grep of `dist/`.
 
 ## Build and deploy
