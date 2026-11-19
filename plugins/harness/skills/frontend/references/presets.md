@@ -98,7 +98,7 @@ Workspace context: `<folder>/` in the `<workspace>` workspace (root CLAUDE.md). 
 |---|---|
 | `pnpm install` | install |
 | `pnpm dev:mock` | dev server with MSW |
-| `pnpm dev` | dev server, `/api` → `<http://localhost:8080>` |
+| `pnpm dev` | dev server, `/api` → `API_PROXY_TARGET` in `.env.local` (default `<http://localhost:8080>`) |
 | `pnpm typecheck` / `pnpm lint` / `pnpm test` | checks (run all three for every change) |
 | `pnpm e2e` | Playwright |
 | `pnpm build` | production build |
