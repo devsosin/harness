@@ -33,6 +33,10 @@ harness/
         ├── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
         │   ├── SKILL.md
         │   └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
+        ├── make-decision/                   # /harness:make-decision — 결정 폴더(brief·d-main·d-sub·result)·독립 두 번째 의견·점검 스크립트
+        │   ├── SKILL.md
+        │   ├── assets/brief.md, opinion.md, readme.md
+        │   └── scripts/decisions.mjs, decisions.test.mjs   # Node 18+, 의존성 없음
         ├── plan-tasks/                      # /harness:plan-tasks — 저장소별 작업 카드(docs/tasks/)·README 표·요청 시 이슈
         │   ├── SKILL.md
         │   └── assets/task-card.md, tasks-readme.md

@@ -47,5 +47,6 @@ verify:
   - claude plugin validate .
   - claude plugin validate plugins/harness
   - node --test plugins/harness/skills/code-order/scripts/rust.test.mjs
+  - node --test plugins/harness/skills/make-decision/scripts/decisions.test.mjs
 
 decided: 2026-11-18
