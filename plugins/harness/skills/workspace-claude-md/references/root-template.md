@@ -102,6 +102,8 @@ When documents disagree, follow this order and report the conflict instead of si
 ## 8. Sessions & plans
 
 <Where the work plan / session order / progress table lives (e.g. `frontend/CLAUDE.md` §Work Plan, `docs/SESSION-SUMMARY.md`). Read it before starting; update it before ending.>
+
+- Planned work: `docs/tasks/README.md` (`harness:plan-tasks`); issues only on request.
 ````
 
 ## Notes for filling it in
