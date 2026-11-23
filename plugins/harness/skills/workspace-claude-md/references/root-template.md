@@ -92,7 +92,7 @@ When documents disagree, follow this order and report the conflict instead of si
 
 - Prose in <Korean>; code identifiers, paths, endpoints, IDs, config keys stay as they are.
 - Each spec has a version line; bump it and add a change-log row when you change it.
-- Record user decisions in the open-questions table of `<docs/product/FeatureSpec.md §N>`, not only in chat.
+- Decisions live in `docs/decisions/` (`harness:make-decision`): one folder per decision, main opinion + an independent subagent opinion that never sees it, then the sweep script. Never adopt your own recommendation on an open decision without that. Legal, business, pricing, refund and personal-data items always go to the user. Record user decisions there, not only in chat.
 
 ## 7. Security
 

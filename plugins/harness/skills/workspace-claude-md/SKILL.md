@@ -59,6 +59,7 @@ If mixed (re-engineering + migration), write both. If unsure, ask the user once.
 - **The frontend is chosen by requirements**: with the questions in the frontend skill's `${CLAUDE_SKILL_DIR}/../frontend/references/presets.md` (SEO/AEO, deploy target, PWA, admin vs public screens), propose Vite SPA (default) or Next.js (static deploy); the user decides. The frontend repo CLAUDE.md template is at the end of that file. Do not copy screen implementation rules into CLAUDE.md; point to the `harness:frontend` skill.
 - For existing repos, the real dependencies the script found override the docs. If they disagree, do not write both; tell the user.
 - Leave undecided items in CLAUDE.md as `TBD — <who/when decides>`. Guesses get read as decisions by the next session.
+- Manage open decisions with the `harness:make-decision` skill (`docs/decisions/`, independent second opinion, sweep script) and point to them from CLAUDE.md as `TBD — D-<NNN>`. Write the root template §6 decisions line so every session uses it.
 
 ## 5. Check environment — Docker dev and test
 
