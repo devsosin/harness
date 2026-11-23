@@ -30,6 +30,9 @@ harness/
         │   ├── SKILL.md
         │   ├── scripts/workspace-map.mjs, workspace-map.test.mjs   # 저장소·스택·docs 트리 지도, CLAUDE.md 경로 검사(Node 18+, 의존성 없음)
         │   └── references/root-template.md, project-types.md, backend-rust.md, docker-dev.md
+        ├── fetch-docs/                      # /harness:fetch-docs — 외부 문서를 압축 Markdown(docs/<소스>/)으로, 출처·날짜·재실행 명령
+        │   ├── SKILL.md
+        │   └── scripts/fetch-docs.mjs, fetch-docs.test.mjs   # Node 18+, 의존성 없음(--browser 만 Playwright 선택)
         ├── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
         │   ├── SKILL.md
         │   └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
@@ -56,7 +59,7 @@ harness/
 외부 스타일 가이드는 비교·검토용으로 텍스트만 받아 `references/`(git 제외)에 섹션별 파일로 둔다:
 
 ```bash
-node scripts/fetch-reference.mjs https://google.github.io/styleguide/rustguide.html references/rust-style-guide/google
+node plugins/harness/skills/fetch-docs/scripts/fetch-docs.mjs https://google.github.io/styleguide/rustguide.html references/rust-style-guide/google
 ```
 
 ## 설치
