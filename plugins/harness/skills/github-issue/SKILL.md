@@ -65,6 +65,8 @@ Follow the config's `labels`. General rules:
 
 ## 5. Creating
 
+If the workspace keeps task cards (`docs/tasks/`, `harness:plan-tasks`) and the user asks to issue a card, use the card's 이슈 초안 as the draft, then set the card to `issued` with the URL and update `docs/tasks/README.md` (plan-tasks §5).
+
 If the user asked for an issue, create it right away. If the plan is still forming and the content is not settled, show a draft and create it after confirmation. When migrating many at once (e.g. from an issue file), create them one by one in the same format and replace cross-references with `#number` after all exist.
 
 Write the body to a temp file (the session scratchpad) and pass `--body-file` — it avoids shell quoting problems.
