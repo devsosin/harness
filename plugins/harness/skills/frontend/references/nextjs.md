@@ -38,4 +38,4 @@ components/  features/<area>/  lib/api/  lib/auth/  mocks/  tests/
 
 ## Commands
 
-`pnpm dev`, `pnpm dev:mock`, `pnpm build`, `pnpm start` (server mode only), `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`.
+`pnpm dev`, `pnpm dev:mock`, `pnpm build`, `pnpm start` (server mode only), `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm e2e`.
