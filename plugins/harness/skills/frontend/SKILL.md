@@ -32,7 +32,7 @@ Output language: reports to the user follow the user's language; UI copy follows
 2. **Versions**: use the stable versions at install time; pin `packageManager` (pnpm) and Node LTS. Pin combinations that break compatibility (ESLint plugins vs TypeScript major …) and give the reason in CLAUDE.md.
 3. **Skeleton order**: tooling (TS strict, ESLint flat config, Prettier, Vitest, Playwright) → design tokens → shared components → API client and error mapping → auth flow → MSW → first screen. Skip an earlier step and every screen builds it differently. MSW is run mode 1; set up modes 2 and 3 with the `harness:local-run` skill.
 4. **CLAUDE.md**: write Product, Stack, Structure, API & Mocking, UI, Testing, Commands in the repo's CLAUDE.md (template at the end of presets.md). The workspace root CLAUDE.md is the `workspace-claude-md` skill.
-5. **Checks** go into `verify` in `.claude/github-issue.yml`: `pnpm typecheck`, `pnpm lint`, `pnpm test` (+ `pnpm build` if needed).
+5. **Checks** go into `verify` in `.claude/github-issue.yml`: `pnpm typecheck`, `pnpm lint`, `pnpm test` (+ `pnpm build` if needed). Playwright setup (config template, `pnpm e2e`, CI) is in [references/testing.md](references/testing.md); add `pnpm e2e` to `verify` once the first critical flow has a spec.
 
 ## 2. Implementing a screen or feature
 
