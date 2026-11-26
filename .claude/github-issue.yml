@@ -49,5 +49,6 @@ verify:
   - node --test plugins/harness/skills/code-order/scripts/rust.test.mjs
   - node --test plugins/harness/skills/make-decision/scripts/decisions.test.mjs
   - node --test plugins/harness/skills/fetch-docs/scripts/fetch-docs.test.mjs
+  - node --test plugins/harness/skills/fetch-article/scripts/fetch-article.test.mjs
 
 decided: 2026-11-18
