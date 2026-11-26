@@ -85,7 +85,7 @@ export function jsonLd(html) {
   for (const m of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) { try { walk(JSON.parse(m[1])); } catch { /* broken JSON-LD: skip */ } }
   return out;
 }
-const WIDGET = /^(공유하기|공유|목차|메뉴|share|menu|table of contents)$/i;
+export const WIDGET = /^(공유하기|공유|목차|메뉴|share|menu|table of contents)$/i;
 
 export function pageTitle(html, md) {
   const h1 = [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => strip(m[1])).find((t) => t && !WIDGET.test(t));
