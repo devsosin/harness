@@ -5,6 +5,8 @@ description: 외부 문서(벤더 API 레퍼런스, 공식 가이드 등)를 저
 
 # Fetch external docs
 
+For articles, newsletters and blog posts (one piece = one file with front matter), use `harness:fetch-article` instead.
+
 Instead of re-reading and re-summarizing a vendor's docs every session, keep a **compact Markdown copy** in the repo with its source, date and a re-run command. Agents read the copy; a re-run plus `git diff` shows what the vendor changed.
 
 Output language: the generated README index is in Korean (the template in the script); fetched content stays in its original language. Reports follow the user's language.

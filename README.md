@@ -33,6 +33,9 @@ harness/
         ├── fetch-docs/                      # /harness:fetch-docs — 외부 문서를 압축 Markdown(docs/<소스>/)으로, 출처·날짜·재실행 명령
         │   ├── SKILL.md
         │   └── scripts/fetch-docs.mjs, fetch-docs.test.mjs   # Node 18+, 의존성 없음(--browser 만 Playwright 선택)
+        ├── fetch-article/                   # /harness:fetch-article — 기사·뉴스레터·블로그를 한 편 한 파일(front matter·링크·영상·이미지)
+        │   ├── SKILL.md
+        │   └── scripts/fetch-article.mjs, fetch-article.test.mjs   # Node 18+, fetch-docs 변환기 재사용
         ├── frontend/                        # /harness:frontend — React 프론트엔드 셋업·화면 구현 규칙
         │   ├── SKILL.md
         │   └── references/presets.md(Vite SPA·Next.js), vite-spa.md, nextjs.md, api-and-mocks.md, testing.md, pwa.md, seo-aeo.md
