@@ -24,6 +24,8 @@ Web service domains add layers on top of this (`handler`, `usecase`, `repository
 
 ## 3. Layout by project shape
 
+Each shape below is one crate. Two or more deploy units in one repo → a workspace of these crates (§7).
+
 ### API client library (lib)
 
 ```text
@@ -148,3 +150,36 @@ Turn a layer file into a folder of the same name when it passes ~250 non-test li
 ## 6. Verification
 
 A structure-only PR does not change behavior: the same tests pass in the same number, and every supported feature combination builds.
+
+## 7. Workspace (several crates)
+
+One deploy unit is one crate. When a repo ships two or more (an API server and a worker, a server and a scheduled collector), make it **one Cargo workspace in one repo** — not separate repos for the DB code and each program, which would keep two copies of the schema and queries in step by hand.
+
+```text
+Cargo.toml          [workspace] members, [workspace.dependencies], [workspace.lints]
+Cargo.lock          committed
+migrations/         the only migrations folder (SQLx)
+.sqlx/              offline query data for every crate
+crates/
+  server/           bin — HTTP API (web service layout, §3)
+  worker/           bin — jobs, collectors (executable layout, §3)
+  core/             lib — use cases and domain types both bins use
+  repository/       lib — SQL: entity/record types and query functions
+```
+
+- **A bin crate never depends on another bin crate.** What both need moves into a lib crate.
+- **Shared use cases go to `core` only when both bins use them**; otherwise they stay in the bin that uses them (§1 "share only what two or more places actually use").
+- **`repository` does not know the web framework**: no Axum, extractors or `StatusCode` — connections in, entity/record types out. `core` does not know it either; HTTP stays in `server`.
+- Migrations live in one place (root `migrations/`); every crate runs against the same schema.
+- External dependency versions are declared once in the root `[workspace.dependencies]`; members write `serde = { workspace = true }`.
+- Lints are declared once in `[workspace.lints]`; each member has `[lints] workspace = true` ([templates/lints.toml](templates/lints.toml)).
+- Commands take `--workspace`: `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo sqlx prepare --workspace -- --all-targets`.
+
+### A crate from another repo
+
+When a crate lives in its own repo (a shared API client library):
+
+- Depend on it by git with a pinned `rev` (or tag): `client = { git = "https://github.com/<owner>/<repo>", rev = "<sha>" }`.
+- Commit `Cargo.lock`, and build the Docker image with `--locked` so the image uses exactly the locked revision.
+- Updating is an issue/PR **in the repo that depends on it** (bump `rev`, run checks), never a side effect of the library's own PR.
+
