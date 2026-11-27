@@ -1,3 +1,4 @@
-# Clippy settings for CODE_STYLE.md. Copy to the repository root as clippy.toml.
-allow-unwrap-in-tests = true   # §5: unwrap is fine in #[test] and #[cfg(test)] code
-max-fn-params-bools = 1        # §2: two or more bool parameters → use an enum
+# Clippy settings for CODE_STYLE.md. Copy to the repository (or workspace) root as clippy.toml.
+allow-unwrap-in-tests = true      # §5: unwrap is fine in #[test] and #[cfg(test)] code
+max-fn-params-bools = 1           # §2: two or more bool parameters → use an enum
+too-many-lines-threshold = 100    # §8: code lines per function (blank and comment lines not counted)

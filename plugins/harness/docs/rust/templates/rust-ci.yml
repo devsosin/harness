@@ -1,5 +1,6 @@
 # CI for CODE_STYLE.md. Copy to .github/workflows/rust.yml.
 # Needs templates/lints.toml in Cargo.toml and templates/clippy.toml at the root.
+# --workspace also works for a single crate, so the same file fits both.
 name: rust
 
 on:
@@ -27,10 +28,21 @@ jobs:
 
       # List each supported feature combination if the crate has features.
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # Tests needing a DB (e.g. db_enum_test.rs) need a postgres service and DATABASE_URL here.
       - name: Test
-        run: cargo test
+        run: cargo test --workspace
+
+      # §2: status values reach SQL only as bind parameters. Migrations are not searched.
+      # Add the column names your repo uses for statuses.
+      - name: No status literals in SQL
+        run: |
+          if grep -rniE --include='*.rs' --include='*.sql' \
+              "\b(status|state|kind)\s*(=|<>|!=|in\s*\()\s*'" src crates 2>/dev/null; then
+            echo "::error::Bind the enum (.bind(Status::X)) instead of writing status strings in SQL (CODE_STYLE §2)"
+            exit 1
+          fi
 
       # Item order (§7). Pin `ref` to a harness tag or commit for reproducible runs.
       - name: Fetch code-order script
