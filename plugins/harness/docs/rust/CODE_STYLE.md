@@ -20,6 +20,25 @@ Shared code rules for Rust repositories (API client libraries, executables, web 
 - A library's public enum that may grow is `#[non_exhaustive]`; closed sets (`Visible`/`Hidden`) are not.
 - Put an enum in the `types.rs` of the narrowest module that owns the concept; promote it to a shared domain module only when several features use it.
 
+### Status values and constants
+
+Keeps one value in one place, so a rename or a new variant cannot miss a copy.
+
+- **Status values are enums with `sqlx::Type`** (`#[sqlx(type_name = "...", rename_all = "snake_case")]`), and reach SQL only as bind parameters (`.bind(OrderStatus::Paid)`, `$1`). Never write a status string in SQL (`WHERE status = 'paid'`) — CI greps for it ([templates/rust-ci.yml](templates/rust-ci.yml)). Migrations are the exception (types, defaults, `CHECK`, partial indexes).
+- One test per such enum proves its spelling matches the DB ([templates/db_enum_test.rs](templates/db_enum_test.rs)).
+- If a query is slow without the literal, add an index where it is needed; do not inline the value.
+- Where each constant lives:
+
+  | Value | Place |
+  |---|---|
+  | statuses, kinds | enum in the domain's `types.rs` |
+  | used by one domain (limits, page sizes, reserved ids) | `src/<domain>/constants.rs` |
+  | used by two or more domains | `src/constants.rs` — move it there when the second domain needs it (in a workspace: the shared `core` crate) |
+  | error codes | `errors.rs` |
+  | times (timeouts, intervals, TTLs) | `Duration` constants named by purpose: `const LOGIN_TIMEOUT: Duration = Duration::from_secs(10);` |
+
+- **Same value, different meaning → separate constants.** `PAGE_SIZE = 50` and `MAX_BATCH = 50` stay apart; merging them couples two decisions.
+
 ## 3. Ownership and visibility
 
 - Borrow when only reading — `&str`, `&[T]`, `&T`, `Option<&T>`, not `&String`, `&Vec<T>`, `&Box<T>` `[lint: ptr_arg, borrowed_box]`; take owned values when storing or consuming. Clone only with a reason.
@@ -72,7 +91,9 @@ A plain comment followed by a blank line is a section heading (e.g. `// --------
 - Doc comments (`///`) for public contracts, failure conditions (`# Errors`, `# Panics`) and side effects `[lint: missing_docs, missing_errors_doc, missing_panics_doc — libraries]`; plain comments for decisions and constraints the code cannot express. Do not restate the name.
 - Test behavior, not implementation details: for boundary types, serialized field names, enum values, numeric vs. string representation, required fields and unknown values; for workflows, failure paths, partial results and mutation outcomes. Give `assert!` a message when the reason is not obvious.
 - Keep tests that need live services, credentials or real state changes apart from routine tests (e.g. `#[ignore]`). Report only checks that were actually run.
-- Checks (same as [templates/rust-ci.yml](templates/rust-ci.yml)): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (supported feature combinations), `cargo test`, `code-order` script.
+- Split a long function into named steps `[lint: too_many_lines]` (threshold in [templates/clippy.toml](templates/clippy.toml)).
+- Before renaming, moving or deleting a public item, find its references with rust-analyzer (LSP "find references") if it is installed, then grep for what LSP cannot see (macro input, SQL files, docs, other repos).
+- Checks (same as [templates/rust-ci.yml](templates/rust-ci.yml)): `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` (supported feature combinations), `cargo test --workspace`, status literal grep, `code-order` script.
 
 ## 9. Macros
 

@@ -41,6 +41,7 @@ labels:
     description: 사용자 결정으로 보류
 
 # Verify commands for "Done when" (optional). implement and github-pr run all of them before a PR.
+# Rust: lints come from [lints] in Cargo.toml + clippy.toml (harness docs/rust/templates). Workspace: add --workspace to clippy and test.
 verify:
   - cargo fmt --check
   - cargo clippy --all-targets -- -D warnings

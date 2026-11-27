@@ -36,6 +36,17 @@ This folder is **not** a git repository; the folders below are separate reposito
 
 Not in this folder but needed for <build>: `<repo>` — clone next to `<x>/` (see `<Dockerfile path>`).
 
+### Reference repos
+
+Read-only clones for reading and searching code; never work in them.
+
+| Path (in the container) | Repo | Why |
+|---|---|---|
+| `/refs/<repo>` | `<owner>/<repo>` | <what to look up there> |
+
+- Mounted read-only (writes fail with `Read-only file system`); always the default branch.
+- Refreshed on the host right before each task starts — never `git pull` or edit inside them. To change one, work in that repo's own project.
+
 ## 2. Sources of truth *(required)*
 
 When documents disagree, follow this order and report the conflict instead of silently picking one:
@@ -109,6 +120,7 @@ When documents disagree, follow this order and report the conflict instead of si
 ## Notes for filling it in
 
 - **§1 tree**: pick the lines a new session needs; don't paste the whole script output. One comment per line. Mark read-only folders in the tree and the table.
+- **§1 Reference repos**: only when the project has reference clones mounted (agent-hub `proj ref`). Write the container path `/refs/<repo>`, never the host path. Drop the subsection otherwise.
 - **§1 table "Notes"** is where cross-session hazards go: shared crates other sessions edit, folders that are git repos without a remote, things that must be cloned from elsewhere.
 - **§2**: the order differs by project type — see project-types.md. A prototype often has only `docs/product` → code.
 - **§4**: every command must have been run on this machine, or carry `(not verified: <why>)`. Prefer the `verify` list from `.claude/github-issue.yml` so the two never drift.

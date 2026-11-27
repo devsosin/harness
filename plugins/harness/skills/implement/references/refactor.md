@@ -6,6 +6,7 @@ Common guide (CLEAN_ARCHITECTURE §6): a structure-only PR passes **the same tes
 
 1. **Check coverage** — is the code you will move or change covered by tests? For uncovered behavior (especially API response shape, error codes, DB results), add a check that pins current behavior **before changing it** — a new test, or an assertion line on an existing test that already runs it (e.g. `assert_eq!(body["provider"], "aligo")`). Either way, confirm it **passes on the code before the change**, commit it separately, then refactor. It must still pass afterwards. List the newly pinned behaviors in the PR.
 2. **Move in small steps** — one responsibility (one module, one type) at a time, running tests each time. Never mix moves and edits in one commit (so the reviewer can confirm "moved only" in the diff).
+   - Rust: after a move or rename, if rust-analyzer is installed, use its find references (LSP) on the moved or renamed item to confirm no old path is left; then grep for what LSP cannot see (macro input, SQL files, docs). Same for each symbol in legacy removal step 1.
 3. **Move tests along** — tests move with their code. Do not delete tests or weaken assertions. If one must change, give the reason in the commit message and the PR.
 4. **Pin serialized values** — when turning strings into enums, test that values going to the API and DB do not change (serde names, DB mapping).
 5. **Verification bar** — same test names and count as the baseline (plus the characterization tests you added). If a file stays over ~250 lines, explain why in the PR.
