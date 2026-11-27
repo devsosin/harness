@@ -55,7 +55,8 @@ If mixed (re-engineering + migration), write both. If unsure, ask the user once.
 
 ## 4. Confirm decisions — stack
 
-- **The backend is a fixed preset**: Rust + Axum + SQLx + PostgreSQL, tests in Docker. Template: [references/backend-rust.md](references/backend-rust.md). AI/LLM calls are adapters inside the Axum service too (no separate Python server). If an existing repo uses another stack, write that stack as it is — the preset is only for new repos.
+- **The backend is a fixed preset**: Rust + Axum + SQLx + PostgreSQL, tests in Docker. Template: [references/rust/server/README.md](references/rust/server/README.md). AI/LLM calls are adapters inside the Axum service too (no separate Python server). If an existing repo uses another stack, write that stack as it is — the preset is only for new repos.
+- **Rust repos start at [references/rust/README.md](references/rust/README.md)**: it picks the shape (lib, bin, server, or a workspace when there are two or more deploy units) and every sub-doc to read. If the repo has no `[lints]` table or `clippy.toml`, suggest applying the harness lint templates (that file says how) — the user decides.
 - **The frontend is chosen by requirements**: with the questions in the frontend skill's `${CLAUDE_SKILL_DIR}/../frontend/references/presets.md` (SEO/AEO, deploy target, PWA, admin vs public screens), propose Vite SPA (default) or Next.js (static deploy); the user decides. The frontend repo CLAUDE.md template is at the end of that file. Do not copy screen implementation rules into CLAUDE.md; point to the `harness:frontend` skill.
 - For existing repos, the real dependencies the script found override the docs. If they disagree, do not write both; tell the user.
 - Leave undecided items in CLAUDE.md as `TBD — <who/when decides>`. Guesses get read as decisions by the next session.
@@ -73,7 +74,7 @@ If mixed (re-engineering + migration), write both. If unsure, ask the user once.
 
 ## 6. Write
 
-Templates: root [references/root-template.md](references/root-template.md), backend [references/backend-rust.md](references/backend-rust.md), frontend at the end of the frontend skill's `references/presets.md`.
+Templates: root [references/root-template.md](references/root-template.md), Rust [references/rust/README.md](references/rust/README.md) and the shape docs it names, frontend at the end of the frontend skill's `references/presets.md`.
 
 - **Language: CLAUDE.md body in English.** Code identifiers, paths, commands and IDs unchanged. The language rule for `docs/` (usually Korean) goes separately in CLAUDE.md's Documentation section. If the user names another language, use it.
 - **Folder structure as tree + table**: do not paste the script output; keep hand-picked lines with one-line comments. Per folder: "git repo (owner/name) / not", role, read-only or not. If the root is not a git repo, say so on the first line — it explains why `git` fails at the root.

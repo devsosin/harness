@@ -1,6 +1,6 @@
-# Backend repo CLAUDE.md — Rust / Axum preset
+# HTTP API server CLAUDE.md — Rust / Axum preset
 
-Default stack for a new backend repo. For an existing repo, keep its actual stack and fill the same sections from what is there.
+Default stack for a new backend repo. For an existing repo, keep its actual stack and fill the same sections from what is there. Common parts (toolchain, lints, checks, refactoring order) come from [../README.md](../README.md); in a server + worker workspace, read [../bin/README.md](../bin/README.md) for the worker too.
 
 Code rules live in the harness language guides — point to them, don't restate: `docs/rust/CODE_STYLE.md`, `docs/rust/CLEAN_ARCHITECTURE.md` (and `templates/` for lints and CI). If the repo has `docs/REPO_ARCHITECTURE.md`, it wins for module layout.
 
@@ -17,7 +17,7 @@ Code rules live in the harness language guides — point to them, don't restate:
 | External APIs | one adapter crate or module per provider (`reqwest`), normalized to internal types; mocked in tests |
 | AI / LLM | an adapter per provider behind a trait (OpenAI, Gemini, Anthropic HTTP APIs via `reqwest`), structured output parsed with `serde` and validated before use; prompts and model config outside handlers. No separate Python service. |
 | Tests | unit + `#[sqlx::test]` integration + HTTP contract tests (`tower::ServiceExt::oneshot`) |
-| Lint / format | `cargo fmt`, `cargo clippy --all-targets -- -D warnings` |
+| Lint / format | `cargo fmt`, `cargo clippy --all-targets -- -D warnings` with harness `templates/lints.toml` + `clippy.toml` (workspace: `--workspace`) |
 | Image | multi-stage Dockerfile → `debian:trixie-slim` runtime; migrations are not run by the image |
 
 ## Template
@@ -41,7 +41,7 @@ Workspace context: this repo is `<folder>/` in the `<workspace>` workspace; see 
 - `src/config.rs` — env loading; fail fast on missing keys
 - `migrations/` — SQLx migrations (never edit an applied one)
 - `tests/` — integration and HTTP contract tests
-- Layering and naming: harness `docs/rust/CLEAN_ARCHITECTURE.md`; style: `docs/rust/CODE_STYLE.md`.
+- Code rules: harness `docs/rust/CODE_STYLE.md` and `CLEAN_ARCHITECTURE.md`. Exceptions: <none | …>.
 
 ## API
 
@@ -71,9 +71,11 @@ Run from this repo's root. <Host Rust | Docker: prefix with `docker compose -p <
 | `cargo fmt --check` | format |
 | `cargo clippy --all-targets -- -D warnings` | lint |
 | `cargo test` | unit + integration (needs `DATABASE_URL` or PG* env) |
-| `cargo sqlx prepare --check -- --all-targets` | `.sqlx/` up to date |
+| `cargo sqlx prepare --check -- --all-targets` | `.sqlx/` up to date (workspace: `cargo sqlx prepare --workspace --check -- --all-targets`) |
 | `cargo run` | dev server on `127.0.0.1:8080` (needs `.env`: <KEY names>) |
 | `docker build -t <name> .` | production image |
+
+Refactoring: clippy → rust-analyzer find references (if installed) → `/ponytail-audit` → Graphify only if needed (output in `/tmp`).
 
 ## Environment
 
