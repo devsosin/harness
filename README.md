@@ -29,7 +29,7 @@ harness/
         ├── workspace-claude-md/             # /harness:workspace-claude-md — 여러 저장소 워크스페이스의 CLAUDE.md(루트·저장소별)
         │   ├── SKILL.md
         │   ├── scripts/workspace-map.mjs, workspace-map.test.mjs   # 저장소·스택·docs 트리 지도, CLAUDE.md 경로 검사(Node 18+, 의존성 없음)
-        │   └── references/root-template.md, project-types.md, backend-rust.md, docker-dev.md
+        │   └── references/root-template.md, project-types.md, docker-dev.md, rust/README.md(진입점) + lib/·bin/·server/README.md
         ├── fetch-docs/                      # /harness:fetch-docs — 외부 문서를 압축 Markdown(docs/<소스>/)으로, 출처·날짜·재실행 명령
         │   ├── SKILL.md
         │   └── scripts/fetch-docs.mjs, fetch-docs.test.mjs   # Node 18+, 의존성 없음(--browser 만 Playwright 선택)
@@ -54,7 +54,7 @@ harness/
             └── references/steps.md, stacks.md(스택별 볼 곳), scope-template.md, security-baseline.md(SR)
     docs/<lang>/                             # 언어별 공통 가이드 — 스킬이 ${CLAUDE_SKILL_DIR}/../../docs/ 로 읽음
         └── rust/CODE_STYLE.md, CLEAN_ARCHITECTURE.md
-            └── templates/                    # lints.toml, clippy.toml, rust-ci.yml — 각 저장소에 복사해 CI 로 검사
+            └── templates/                    # lints.toml, clippy.toml, rust-ci.yml, db_enum_test.rs — 각 저장소에 복사해 CI 로 검사
 ```
 
 공통 문서는 플러그인 안 `plugins/harness/docs/<lang>/` 에 둔다. 설치하면 플러그인 폴더만 캐시로 복사되므로 저장소 루트의 파일은 스킬이 읽을 수 없다. 새 언어는 `docs/<lang>/CODE_STYLE.md`(+ `CLEAN_ARCHITECTURE.md`)를 더하고 implement 스킬의 언어 판별 목록에 확장자를 추가한다.
